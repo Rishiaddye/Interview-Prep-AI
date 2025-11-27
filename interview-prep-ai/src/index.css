@@ -1,0 +1,94 @@
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap');
+@import "tailwindcss";
+
+/* 🔥 LIGHT THEME (Default) */
+:root {
+  --bg: #FFFCEF;
+  --text: #0F0F0F;
+  --secondary-text: #4B4B4B;
+  --card: #FFFEF8;
+  --border: #F7EED5;
+}
+
+/* 🌙 DARK THEME */
+:root.dark {
+  --bg: #121214;
+  --text: #ECECEC;
+  --secondary-text: #A5A5A5;
+  --card: #1A1A1C;
+  --border: #2C2C2E;
+}
+
+/* Smooth fade when page loads */
+.fade-in {
+  animation: fadeIn 0.7s ease forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 🔥 GLOBAL THEME APPLICATION */
+* {
+  transition: background-color 0.35s ease, color 0.35s ease;
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--bg);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Urbanist', sans-serif;
+  overflow-x: hidden;
+}
+
+
+/* Always make pinned text dark in both themes */
+.pinned-box-text {
+  color: #2b2b2b !important;
+  font-weight: 500;
+}
+
+/* Ensure page background applies smoothly */
+#root {
+  background: var(--bg);
+  transition: background 0.35s ease;
+}
+
+/* Grid Layout */
+.role-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+/* Button Focus */
+button:focus {
+  outline: none;
+}
+ 
+
+/* Scrollbar Styling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 100, 100, 0.4);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+

@@ -1,0 +1,21 @@
+/* 
+  🔥 DEPRECATED - theme.css is no longer needed
+  All theme variables are now centralized in index.css
+  Keep this file or delete it - it won't affect the app
+*/
+
+/* Glow effects - can be kept if needed */
+.glow {
+  background: radial-gradient(circle at top right, #d9e7ff 0%, transparent 60%);
+  filter: blur(40px);
+  opacity: 0.7;
+}
+
+.glow-xl {
+  position: absolute;
+  width: 500px;
+  height: 350px;
+  background: radial-gradient(circle, #e2efff, #fceaff, transparent);
+  filter: blur(80px);
+  opacity: 0.55;
+}
