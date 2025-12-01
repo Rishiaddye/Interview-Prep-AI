@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useUser } from "../../context/userContext.jsx";
 import Input from "../../components/inputs/input.jsx";
 
+import { auth, googleProvider } from "../../firebase";
+import { signInWithPopup } from "firebase/auth";
+
 const Login = ({ setCurrentPage }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,7 +33,6 @@ const Login = ({ setCurrentPage }) => {
 
       if (!res.ok) return setError(data.message || "Invalid login.");
 
-      // ⭐ Build user object with stored image
       const loggedUser = {
         id: data.user?.id,
         fullName: data.user?.fullName,
@@ -38,16 +40,38 @@ const Login = ({ setCurrentPage }) => {
         profilePic: data.user?.profilePic || "/default-avatar.png",
       };
 
-      // Save to context + storage
       login(loggedUser);
       localStorage.setItem("user", JSON.stringify(loggedUser));
 
       alert("🎉 Login Successful!");
       navigate("/dashboard");
-      
+
     } catch (error) {
       console.error("Login Error:", error);
       setError("Server error. Please check backend connection.");
+    }
+  };
+
+  // ⭐ GOOGLE LOGIN FUNCTION
+  const handleGoogleLogin = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+
+      const googleUser = {
+        fullName: result.user.displayName,
+        email: result.user.email,
+        profilePic: result.user.photoURL,
+      };
+
+      login(googleUser);
+      localStorage.setItem("user", JSON.stringify(googleUser));
+
+      alert("🎉 Logged in with Google!");
+      navigate("/dashboard");
+
+    } catch (err) {
+      console.error("Google Auth Error:", err);
+      setError("Google login failed. Try again.");
     }
   };
 
@@ -84,6 +108,21 @@ const Login = ({ setCurrentPage }) => {
           hover:bg-gray-800 active:scale-95 transition mt-6"
         >
           LOGIN
+        </button>
+
+        {/* ⭐ GOOGLE BUTTON BELOW LOGIN */}
+        <button
+          type="button"
+          onClick={handleGoogleLogin}
+          className="w-full flex items-center justify-center gap-3 border py-3 rounded-xl 
+          text-sm font-semibold hover:bg-gray-100 active:scale-95 transition mt-3 bg-white"
+        >
+          <img
+            src="https://cdn.jsdelivr.net/gh/edent/SuperTinyIcons/images/svg/google.svg"
+            alt="google"
+            className="w-5 h-5"
+          />
+          Continue with Google
         </button>
 
         <p className="text-[13px] text-slate-800 mt-3">

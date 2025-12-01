@@ -44,7 +44,7 @@ const Footer = () => {
 
           <ul className="space-y-2 text-gray-700 text-sm mt-3">
             <li className="hover:text-black cursor-pointer">
-              <Link to="/about">About</Link> {/* ⭐ Working */}
+              <Link to="/about">About us</Link> {/* ⭐ Working */}
             </li>
             <li className="hover:text-black cursor-pointer">Careers</li>
             <li className="hover:text-black cursor-pointer flex items-center gap-2">

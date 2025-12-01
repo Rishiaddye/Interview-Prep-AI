@@ -1,29 +1,33 @@
+// routes/session.js
 const express = require("express");
 const router = express.Router();
 const Session = require("../models/Session");
-const { generateInterview } = require("../services/aiService.js");
+const { generateInterview } = require("../services/aiService");
 
-// =============================
-// CREATE SESSION
-// =============================
+/* ===========================================================
+   CREATE SESSION (AI Interview)
+   =========================================================== */
 router.post("/create", async (req, res) => {
   try {
     const { userId, role, experience, topics } = req.body;
 
-    // 1. Create empty session first
+    const topicList = Array.isArray(topics)
+      ? topics
+      : typeof topics === "string"
+      ? topics.split(",").map(t => t.trim()).filter(Boolean)
+      : [];
+
     const session = new Session({
       userId: userId || null,
       role,
       experience,
-      topics: topics ? topics.split(",").map(t => t.trim()) : []
+      topics: topicList
     });
 
     await session.save();
 
-    // 2. Generate Q/A from AI
-    const questions = await generateInterview(role, experience, session.topics);
+    const questions = await generateInterview(role, experience, topicList);
 
-    // 3. Map AI output → backend schema (q,a,followup,why)
     session.questions = questions.map(q => ({
       q: q.question || q.q,
       a: q.answer || q.a,
@@ -34,34 +38,25 @@ router.post("/create", async (req, res) => {
     session.aiGenerated = true;
     await session.save();
 
-    // 4. Return in a consistent structure for frontend
-    res.json({
-      ok: true,
-      session
-    });
+    res.json({ ok: true, session });
   } catch (err) {
     console.error("SESSION CREATE ERROR:", err);
-    res.status(500).json({ ok: false, error: "Session create failed" });
+    res.status(500).json({ ok: false, error: "Session creation failed" });
   }
 });
 
-// =============================
-// GET SESSION BY ID
-// =============================
+/* ===========================================================
+   GET SESSION BY ID
+   =========================================================== */
 router.get("/:id", async (req, res) => {
   try {
     const session = await Session.findById(req.params.id);
-
-    if (!session)
-      return res.status(404).json({ ok: false, error: "Not found" });
-
-    // 🔥 MUST return in correct format
+    if (!session) return res.status(404).json({ ok: false, error: "Not found" });
     res.json({ ok: true, session });
   } catch (err) {
     console.error("SESSION GET ERROR:", err);
     res.status(500).json({ ok: false, error: "Server error" });
   }
 });
-
 
 module.exports = router;

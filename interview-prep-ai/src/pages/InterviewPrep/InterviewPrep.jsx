@@ -4,21 +4,24 @@ import Navbar from "../../components/Navbar";
 import QAItem from "../../components/QAItem";
 import SessionView from "../../components/SessionView";
 import { getSession } from "../../apis/sessionApi";
+import { useTheme } from "../../context/themeContext";
 
 const InterviewPrep = () => {
   const { sessionId } = useParams();
+  const { theme } = useTheme();
+
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedQA, setSelectedQA] = useState(null);
   const [pinned, setPinned] = useState([]);
   const [learningLoading, setLearningLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(null);
-  const rightPanelRef = useRef(null);
+  const [visibleCount, setVisibleCount] = useState(8);
+  const [loadMoreLoading, setLoadMoreLoading] = useState(false);
 
-  // Detect if user is on Mobile
+  const rightPanelRef = useRef(null);
   const isMobile = window.innerWidth <= 768;
 
-  // Fetch session
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -35,7 +38,14 @@ const InterviewPrep = () => {
     );
   };
 
-  // Learn More Logic
+  const handleLoadMore = () => {
+    setLoadMoreLoading(true);
+    setTimeout(() => {
+      setVisibleCount((prev) => prev + 8);
+      setLoadMoreLoading(false);
+    }, 1200);
+  };
+
   const handleLearnMore = async (qObj, idx) => {
     try {
       setActiveIndex(idx);
@@ -61,7 +71,6 @@ const InterviewPrep = () => {
             : "<p>Could not generate explanation.</p>",
       });
 
-      // ⭐ ONLY scroll on mobile
       if (isMobile) {
         setTimeout(() => {
           if (rightPanelRef.current) {
@@ -87,12 +96,43 @@ const InterviewPrep = () => {
     setActiveIndex(null);
   };
 
+  // 👇 FINAL FIX: Black clean button in light mode, White glowing in dark mode
+  const buttonStyle =
+    theme === "light"
+      ? {
+          background: "#000",
+          color: "#fff",
+          padding: "14px 28px",
+          borderRadius: "14px",
+          border: "none",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          fontSize: "15px",
+          transition: "0.25s",
+          boxShadow: "none", // ❌ glow removed
+        }
+      : {
+          background: "#fff",
+          color: "#000",
+          padding: "14px 28px",
+          borderRadius: "14px",
+          border: "1.4px solid rgba(255,255,255,0.25)",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          fontSize: "15px",
+          transition: "0.25s",
+          boxShadow: "0px 0px 22px rgba(255,255,255,0.25)", // glow stays
+        };
+
   return (
     <>
       <Navbar />
 
       <div style={{ position: "relative", minHeight: "100vh", background: "var(--bg)" }}>
-        {/* Background Glow */}
         <div
           style={{
             position: "absolute",
@@ -105,20 +145,11 @@ const InterviewPrep = () => {
               "radial-gradient(circle, rgba(255, 217, 176, 0.5), rgba(255, 255, 255, 0.3), transparent)",
             filter: "blur(120px)",
             opacity: 0.35,
-            zIndex: 0,
             pointerEvents: "none",
           }}
         />
 
-        <div
-          style={{
-            maxWidth: 1400,
-            margin: "30px auto",
-            padding: "0 28px",
-            position: "relative",
-            zIndex: 2,
-          }}
-        >
+        <div style={{ maxWidth: 1400, margin: "30px auto", padding: "0 28px" }}>
           {loading && (
             <div style={{ padding: 40, color: "var(--text)" }}>
               Loading session...
@@ -127,55 +158,15 @@ const InterviewPrep = () => {
 
           {!loading && session && (
             <>
-              <h2
-                style={{
-                  fontSize: 40,
-                  fontWeight: 700,
-                  marginBottom: 6,
-                  color: "var(--text)",
-                }}
-              >
+              <h2 style={{ fontSize: 40, fontWeight: 700, marginBottom: 6, color: "var(--text)" }}>
                 {session.role}
               </h2>
 
-              <p
-                style={{
-                  fontSize: 16,
-                  color: "var(--secondary-text)",
-                  marginBottom: 16,
-                }}
-              >
+              <p style={{ fontSize: 16, color: "var(--secondary-text)", marginBottom: 16 }}>
                 {session.topics?.join(", ")}
               </p>
 
-              <div
-                style={{
-                  display: "flex",
-                  gap: 12,
-                  marginBottom: 40,
-                  flexWrap: "wrap",
-                }}
-              >
-                <span style={badgeStyle}>
-                  Experience: {session.experience} Years
-                </span>
-                <span style={badgeStyle}>
-                  {session.questions.length} Q&A
-                </span>
-                <span style={badgeStyle}>
-                  Last Updated:{" "}
-                  {new Date(session.createdAt).toLocaleDateString()}
-                </span>
-              </div>
-
-              <h3
-                style={{
-                  fontSize: 22,
-                  fontWeight: 700,
-                  marginBottom: 20,
-                  color: "var(--text)",
-                }}
-              >
+              <h3 style={{ fontSize: 22, fontWeight: 700, marginBottom: 20, color: "var(--text)" }}>
                 Interview Q & A
               </h3>
 
@@ -188,7 +179,7 @@ const InterviewPrep = () => {
                 closeLearnPanel={closeLearnPanel}
                 learningLoading={learningLoading}
               >
-                {session.questions.map((q, idx) => (
+                {session.questions.slice(0, visibleCount).map((q, idx) => (
                   <QAItem
                     key={idx}
                     index={idx}
@@ -202,11 +193,54 @@ const InterviewPrep = () => {
                     isActive={activeIndex === idx}
                   />
                 ))}
+
+                {visibleCount < session.questions.length && (
+                  <div style={{ display: "flex", justifyContent: "center", marginTop: 25 }}>
+                    <button onClick={handleLoadMore} disabled={loadMoreLoading} style={buttonStyle}>
+                      {loadMoreLoading ? (
+                        <div
+                          style={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: "50%",
+                            border: `2px solid ${theme === "light" ? "#fff" : "#000"}`,
+                            borderTop: "2px solid transparent",
+                            animation: "spin .6s linear infinite",
+                          }}
+                        />
+                      ) : (
+                        <>
+                          <div
+                            style={{
+                              width: 20,
+                              height: 14,
+                              display: "flex",
+                              flexDirection: "column",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            <span style={{ height: 2, width: "100%", background: "currentColor" }} />
+                            <span style={{ height: 2, width: "65%", background: "currentColor" }} />
+                            <span style={{ height: 2, width: "40%", background: "currentColor" }} />
+                          </div>
+                          Load More
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
               </SessionView>
             </>
           )}
         </div>
       </div>
+
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </>
   );
 };
