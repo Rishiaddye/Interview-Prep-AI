@@ -1,56 +1,72 @@
-
 import React from "react";
-import { motion, AnimatePresence } from "framer-motion"; // ✅ add animation
+import { motion, AnimatePresence } from "framer-motion";
 
-const Modal = ({ children, isOpen, onClose, title, hideHeader }) => {
+const Modal = ({ children, isOpen, onClose, variant = "default" }) => {
+
+  // Styles for each modal type
+  const modalStyle = {
+    default: {
+      className:
+        "relative bg-white shadow-[0_8px_32px_rgba(0,0,0,0.08)] rounded-2xl p-6 w-[90vw] md:w-[33vw]",
+      style: {},
+    },
+    glass: {
+      className:
+        "relative p-0 w-auto max-w-[95vw] md:max-w-[680px]",
+      style: {
+        background: "transparent",
+        border: "none",
+        boxShadow: "none",
+      },
+    },
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* ✅ Background Overlay with Fade */}
+          {/* Background overlay */}
           <motion.div
-            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]"
+            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose} // close when clicking outside modal
+            onClick={onClose}
           />
 
-          {/* ✅ Center Modal Card with Smooth Scale Animation */}
+          {/* Modal wrapper */}
           <motion.div
-            className="fixed inset-0 z-50 flex justify-center items-center"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="fixed inset-0 z-50 flex justify-center items-center px-4"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            transition={{ duration: 0.25 }}
           >
-            <div
-              className="relative bg-white shadow-[0_8px_32px_rgba(0,0,0,0.08)] rounded-2xl p-6 w-[90vw] md:w-[33vw]"
-              onClick={(e) => e.stopPropagation()} // stops click from closing modal
-            >
-              {!hideHeader && (
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
-              )}
 
-              {/* ✅ Close Button */}
+          <div
+  className={`${modalStyle[variant].className} ${
+    variant === "glass"
+      ? "bg-transparent shadow-none border-none"
+      : "bg-white"
+  }`}
+  style={modalStyle[variant].style}
+  onClick={(e) => e.stopPropagation()}
+>
+
+
+              {/* Close button */}
               <button
-                type="button"
+                className={`absolute top-4 right-4 p-2 rounded-full transition cursor-pointer ${
+                  variant === "glass"
+                    ? "bg-white/60 backdrop-blur-md hover:bg-white text-black"
+                    : "bg-[#F3E7D9] hover:bg-[#e6d4c2] text-black"
+                }`}
                 onClick={onClose}
-                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-md bg-[#F3E7D9] text-black hover:bg-[#e6d4c2] transition cursor-pointer"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth="2"
-                  stroke="currentColor"
-                  className="w-4 h-4"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                ✕
               </button>
 
-              <div className="overflow-visible">{children}</div>
+              <div>{children}</div>
             </div>
           </motion.div>
         </>

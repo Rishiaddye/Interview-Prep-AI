@@ -52,7 +52,7 @@ const Login = ({ setCurrentPage }) => {
     }
   };
 
-  // ⭐ GOOGLE LOGIN FUNCTION
+  // ⭐ NEW GOOGLE LOGIN FIX
   const handleGoogleLogin = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
@@ -60,9 +60,17 @@ const Login = ({ setCurrentPage }) => {
       const googleUser = {
         fullName: result.user.displayName,
         email: result.user.email,
-        profilePic: result.user.photoURL,
+        profilePic: result.user.photoURL, // ⭐ IMPORTANT
       };
 
+      // 🔥 Send to backend so profile pic will always persist
+      await fetch("http://localhost:5000/api/auth/google-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(googleUser),
+      });
+
+      // Save locally + context
       login(googleUser);
       localStorage.setItem("user", JSON.stringify(googleUser));
 

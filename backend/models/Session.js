@@ -7,14 +7,16 @@ const questionSchema = new mongoose.Schema({
   why: String
 }, { _id: false });
 
-const sessionSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: false },
-  role: { type: String, required: true },
-  experience: { type: String },
-  topics: { type: [String], default: [] },
-  aiGenerated: { type: Boolean, default: false },
-  questions: { type: [questionSchema], default: [] },
-  createdAt: { type: Date, default: Date.now }
-});
+const sessionSchema = new mongoose.Schema(
+  {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: false },
+    role: { type: String, required: true },
+    experience: { type: String },
+    topics: { type: [String], default: [] },
+    aiGenerated: { type: Boolean, default: false },
+    questions: { type: [questionSchema], default: [] },
+  },
+  { timestamps: true } // <-- THIS generates createdAt & updatedAt automatically
+);
 
 module.exports = mongoose.model("Session", sessionSchema);

@@ -90,18 +90,25 @@ const Navbar = () => {
           </p>
         </div>
 
-        <img
-          src={user?.profilePic || "https://i.ibb.co/4pDNDk1/avatar.png"}
-          alt="avatar"
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: "50%",
-            objectFit: "cover",
-            border: "2px solid #ff9e3c",
-            cursor: "pointer",
-          }}
-        />
+      <img
+  src={
+    user?.profilePic?.startsWith("http")
+      ? user.profilePic
+      : user?.profilePic
+      ? `${import.meta.env.VITE_API_URL}/${user.profilePic}`
+      : "https://i.ibb.co/4pDNDk1/avatar.png"
+  }
+  alt="avatar"
+  style={{
+    width: 48,
+    height: 48,
+    borderRadius: "50%",
+    objectFit: "cover",
+    border: "2px solid #ff9e3c",
+    cursor: "pointer",
+  }}
+/>
+
 
         <button
           onClick={() => {
@@ -234,17 +241,24 @@ const Navbar = () => {
               borderBottom: "1px solid rgba(0,0,0,0.1)",
             }}
           >
-            <img
-              src={user?.profilePic || "https://i.ibb.co/4pDNDk1/avatar.png"}
-              alt="avatar"
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: "50%",
-                objectFit: "cover",
-                border: "2px solid #ff9e3c",
-              }}
-            />
+         <img
+  src={
+    user?.profilePic?.startsWith("http")
+      ? user.profilePic
+      : user?.profilePic
+      ? `${import.meta.env.VITE_API_URL}/${user.profilePic}`
+      : "https://i.ibb.co/4pDNDk1/avatar.png"
+  }
+  alt="avatar"
+  style={{
+    width: 40,
+    height: 40,
+    borderRadius: "50%",
+    objectFit: "cover",
+    border: "2px solid #ff9e3c",
+  }}
+/>
+
             <div>
               <p style={{ margin: 0, fontSize: 12, opacity: 0.6, color: "#4B4B4B" }}>
                 Member

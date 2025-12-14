@@ -10,13 +10,22 @@ const aiRoutes = require("./routes/ai.js");
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://your-frontend-domain.vercel.app" // replace after deployment
+    ],
+    credentials: true,
+  })
+);
+
 app.use(bodyParser.json());
 
-// Fix port — ALWAYS run backend on 5000
+// Fix port — ALWAYS run backend on 5000 locally
 const PORT = process.env.PORT || 5000;
 
-// MongoDB
+// MongoDB connection
 mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => console.log("MongoDB Connected"))
@@ -29,6 +38,11 @@ app.use("/api/auth", authRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/session", sessionRoutes);
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== "production") {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+  });
+}
+
+// Export for Vercel deployment
+module.exports = app;

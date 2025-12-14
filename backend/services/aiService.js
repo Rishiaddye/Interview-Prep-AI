@@ -1,65 +1,42 @@
 // services/aiService.js
-const axios = require("axios");
 require("dotenv").config();
+const Groq = require("groq-sdk");
 
-const API_KEY = process.env.GEMINI_API_KEY;
-const API_URL = process.env.GEMINI_API_URL; // e.g. https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY
+});
 
-function extractTextFromResponse(respData) {
-  // Safe extraction for several common shapes
+// Extract text safely
+function extractText(resp) {
   try {
-    // logging for debugging — keep while developing and remove in production
-    console.log("🔍 Gemini raw response (short):", JSON.stringify(respData?.candidates?.[0]?.content?.parts?.[0]?.text || respData?.output || respData, null, 2));
-
-    const candidateText =
-      respData?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      respData?.candidates?.[0]?.content?.[0]?.parts?.[0]?.text ||
-      respData?.output?.[0]?.content?.parts?.[0]?.text ||
-      respData?.output?.[0]?.content?.[0]?.parts?.[0]?.text ||
-      "";
-
-    return candidateText;
+    return resp.choices?.[0]?.message?.content || "";
   } catch (e) {
-    console.error("Error extracting text from response:", e);
     return "";
   }
 }
 
-async function callGemini(promptPayload) {
-  if (!API_KEY || !API_URL) {
-    throw new Error("Gemini API key or URL not configured in .env");
-  }
-
-  const body = {
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: promptPayload }]
-      }
-    ]
-  };
-
-  const headers = {
-    "Content-Type": "application/json",
-    "x-goog-api-key": API_KEY
-  };
-
-  const resp = await axios.post(API_URL, body, { headers, timeout: 30000 });
-  return resp.data;
+// Safe JSON cleaner to prevent crashes
+function cleanJSON(text) {
+  return text
+    .replace(/```json/gi, "")
+    .replace(/```/g, "")
+    .replace(/“|”/g, '"')
+    .replace(/‘|’/g, "'")
+    .trim();
 }
 
 /* ===========================================================
-   1. Generate Interview Questions
-   =========================================================== */
-async function generateInterview(role, experience, topics = []) {
-const prompt = `
-Generate EXACTLY 20 professional interview questions for:
+   1. Generate Interview Questions (10 Q&A)
+=========================================================== */
 
+async function generateInterview(role, experience, topics = []) {
+  const prompt = `
+Generate EXACTLY 10 professional interview questions for:
 Role: ${role}
 Experience: ${experience}
 Topics: ${Array.isArray(topics) ? topics.join(", ") : topics}
 
-Format response as a STRICT JSON array with NO explanations outside JSON:
+Return STRICT JSON ONLY:
 
 [
   {
@@ -69,100 +46,112 @@ Format response as a STRICT JSON array with NO explanations outside JSON:
     "why": "explain why this question matters"
   }
 ]
+
+Do NOT include any text outside the JSON.
 `;
 
-
   try {
-    const respData = await callGemini(prompt);
-    let text = extractTextFromResponse(respData);
+    const resp = await groq.chat.completions.create({
+      model: "llama-3.1-8b-instant",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.3
+    });
 
-    // Remove fenced code markers if present
-    text = text.replace(/```json|```/g, "").trim();
+    let text = cleanJSON(extractText(resp));
 
     const start = text.indexOf("[");
     const end = text.lastIndexOf("]");
+
     if (start !== -1 && end !== -1) {
-      const parsed = JSON.parse(text.substring(start, end + 1));
-      return parsed.map(item => ({
-        question: item.q || item.question || "",
-        answer: item.a || item.answer || "",
-        followup: item.followup || "",
-        why: item.why || ""
-      }));
+      const jsonString = text.substring(start, end + 1);
+      return JSON.parse(jsonString);
     }
 
-    // fallback: return raw text in an error-shaped object
-    return [{ question: "Parsing Error", answer: text }];
+    return [{ q: "Parsing Error", a: text }];
   } catch (err) {
-    console.error("AI ERROR (generateInterview):", err.response?.data || err.message);
-    return [{ question: "AI failed", answer: err.response?.data?.error?.message || err.message }];
+    console.error("AI ERROR (generateInterview):", err);
+    return [{ q: "AI Failed", a: err.message }];
   }
 }
 
 /* ===========================================================
-   2. Generate MCQs From Session Q&A
-   =========================================================== */
+   2. Generate MCQs (10 MCQs)
+=========================================================== */
+
 async function generateMCQs(sessionQuestions) {
   const prompt = `
-You are an expert quiz generator.
+Create EXACTLY 10 multiple-choice questions based ONLY on this Q&A list:
 
-Create EXACTLY 20 multiple-choice questions based ONLY on this Q&A list:
 ${JSON.stringify(sessionQuestions, null, 2)}
 
-Each question must have 4 options, with one correct answer.
-Keep options short (one word or short phrase).
+Each question must have 4 options and 1 correct answer.
 
-Return JSON EXACTLY in this format:
+Return STRICT JSON ONLY:
+
 [
   {
-    "q": "question text",
-    "options": ["option1", "option2", "option3", "option4"],
-    "correctIndex": 0
+    "q": "question",
+    "options": ["a", "b", "c", "d"],
+    "correctIndex": 1
   }
 ]
 `;
 
   try {
-    const respData = await callGemini(prompt);
-    let text = extractTextFromResponse(respData);
-    text = text.replace(/```json|```/g, "").trim();
+    const resp = await groq.chat.completions.create({
+      model: "llama-3.1-8b-instant",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.3
+    });
+
+    let text = cleanJSON(extractText(resp));
 
     const start = text.indexOf("[");
     const end = text.lastIndexOf("]");
+
     if (start !== -1 && end !== -1) {
-      return JSON.parse(text.substring(start, end + 1));
+      const jsonString = text.substring(start, end + 1);
+      return JSON.parse(jsonString);
     }
+
     return [];
   } catch (err) {
-    console.error("AI ERROR (generateMCQs):", err.response?.data || err.message);
+    console.error("AI ERROR (generateMCQs):", err);
     return [];
   }
 }
 
 /* ===========================================================
-   3. Generate Long Explanations
-   =========================================================== */
+   3. Generate Long Explanation (HTML)
+=========================================================== */
+
 async function generateLongExplanation(question, shortAnswer) {
   const prompt = `
-You are an experienced interview mentor.
-Given the question and a short answer, generate a long, structured HTML explanation
-for learning purposes.
+Write a LONG, structured HTML explanation.
+
+STRICT RULES:
+- MUST return ONLY HTML (no markdown, no JSON)
+- Include <h2>, <p>, <ul>, <li>
 
 Question: ${question}
-Answer: ${shortAnswer}
+Short Answer: ${shortAnswer}
 
-Return HTML only (no markdown, no JSON).
+Return ONLY HTML.
 `;
 
   try {
-    const respData = await callGemini(prompt);
-    const text = extractTextFromResponse(respData);
-    const htmlStart = text.indexOf("<");
-    if (htmlStart !== -1) return text.substring(htmlStart);
-    return `<div>${text.replace(/\n/g, "<br/>")}</div>`;
+    const resp = await groq.chat.completions.create({
+      model: "llama-3.1-8b-instant",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2
+    });
+
+    const text = extractText(resp).trim();
+
+    return text.includes("<") ? text : `<p>${text}</p>`;
   } catch (err) {
-    console.error("AI ERROR (generateLongExplanation):", err.response?.data || err.message);
-    return `<p><strong>AI failed:</strong> ${err.response?.data?.error?.message || err.message}</p>`;
+    console.error("AI ERROR (generateLongExplanation):", err);
+    return `<p><strong>AI Failed:</strong> ${err.message}</p>`;
   }
 }
 

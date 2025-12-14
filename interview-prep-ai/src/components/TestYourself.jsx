@@ -9,7 +9,9 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
   const [score, setScore] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  // Fetch AI-generated MCQs
+  // ----------------------------------------
+  // LOAD MCQs WHEN MODAL OPENS
+  // ----------------------------------------
   useEffect(() => {
     if (!open) return;
 
@@ -17,6 +19,7 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
       try {
         setLoading(true);
 
+        // Format Q&A for backend
         const formattedQuestions = session.questions.map((q) => ({
           q: q.question || q.q,
           a: q.answer || q.a,
@@ -45,11 +48,17 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
     loadMCQs();
   }, [open, session]);
 
+  // ----------------------------------------
+  // SELECT OPTION
+  // ----------------------------------------
   const handleSelect = (qIndex, optionIndex) => {
     if (submitted) return;
     setAnswers((prev) => ({ ...prev, [qIndex]: optionIndex }));
   };
 
+  // ----------------------------------------
+  // SUBMIT QUIZ
+  // ----------------------------------------
   const handleSubmit = () => {
     let s = 0;
     for (let i = 0; i < quiz.length; i++) {
@@ -59,17 +68,17 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
     setSubmitted(true);
   };
 
-  // Calculate percent
+  // ----------------------------------------
+  // CALCULATE PERCENTAGE
+  // ----------------------------------------
   const percent = useMemo(() => {
     if (quiz.length === 0) return 0;
     return Math.round((score / quiz.length) * 100);
   }, [score, quiz]);
 
-  // 🔥🔥 SEND SCORE TO SESSIONVIEW WHEN SUBMITTED!
+  // SEND SCORE TO PARENT
   useEffect(() => {
-    if (submitted) {
-      onSubmitScore(percent);
-    }
+    if (submitted) onSubmitScore(percent);
   }, [submitted, percent]);
 
   if (!open) return null;
@@ -85,7 +94,11 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
         alignItems: "center",
         zIndex: 2400,
       }}
-      onClick={onClose}
+
+      // ⭐⭐⭐ FIXED: Prevent modal auto-closing!
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
@@ -99,14 +112,15 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
           padding: window.innerWidth < 768 ? 10 : 20,
         }}
       >
-        {/* 🔥 Quiz Title - Dark Text - Responsive */}
-        <h2 style={{ 
-          marginTop: 0,
-          marginBottom: window.innerWidth < 768 ? 8 : 12,
-          color: "#1b1b1b", 
-          fontSize: window.innerWidth < 768 ? 14 : 22, 
-          fontWeight: 700 
-        }}>
+        <h2
+          style={{
+            marginTop: 0,
+            marginBottom: window.innerWidth < 768 ? 8 : 12,
+            color: "#1b1b1b",
+            fontSize: window.innerWidth < 768 ? 14 : 22,
+            fontWeight: 700,
+          }}
+        >
           {session?.role} — Quiz
         </h2>
 
@@ -117,25 +131,36 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
             {quiz.length} Questions
           </p>
         ) : (
-          <h3 style={{ 
-            color: "#1b1b1b", 
-            fontSize: window.innerWidth < 768 ? 14 : 18, 
-            fontWeight: 700 
-          }}>
+          <h3
+            style={{
+              color: "#1b1b1b",
+              fontSize: window.innerWidth < 768 ? 14 : 18,
+              fontWeight: 700,
+            }}
+          >
             Your Score: {percent}%
           </h3>
         )}
 
+        {/* --------------------------- */}
+        {/*        MCQ LIST             */}
+        {/* --------------------------- */}
         {!loading &&
           quiz.map((item, idx) => (
-            <div key={idx} style={{ marginBottom: window.innerWidth < 768 ? 8 : 20 }}>
-              {/* 🔥 Question Text - Dark - Responsive */}
-              <b style={{ 
-                color: "#1b1b1b", 
-                fontSize: window.innerWidth < 768 ? 12 : 15,
-                display: "block",
-                marginBottom: 6
-              }}>
+            <div
+              key={idx}
+              style={{
+                marginBottom: window.innerWidth < 768 ? 8 : 20,
+              }}
+            >
+              <b
+                style={{
+                  color: "#1b1b1b",
+                  fontSize: window.innerWidth < 768 ? 12 : 15,
+                  display: "block",
+                  marginBottom: 6,
+                }}
+              >
                 {idx + 1}. {item.q}
               </b>
 
@@ -149,30 +174,29 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
                     onClick={() => handleSelect(idx, oi)}
                     style={{
                       marginTop: 4,
-                      padding: window.innerWidth < 768 ? "6px 8px" : "10px 12px",
+                      padding:
+                        window.innerWidth < 768 ? "6px 8px" : "10px 12px",
                       borderRadius: 6,
                       cursor: "pointer",
                       border: "1px solid #ddd",
-                      background: chosen ? "#f0f7ff" : "#fff",
+                      background: chosen ? "#eef6ff" : "#fff",
                       color: "#1b1b1b",
                       transition: "all 0.2s ease",
                       fontWeight: 500,
                       fontSize: window.innerWidth < 768 ? 12 : 14,
+
                       ...(submitted &&
                         (isCorrect
                           ? {
                               borderColor: "#2ecc71",
                               background: "#eaffea",
-                              color: "#1b1b1b",
                             }
                           : chosen
                           ? {
                               borderColor: "#e74c3c",
                               background: "#ffe9e9",
-                              color: "#1b1b1b",
                             }
-                          : { color: "#1b1b1b" }
-                        )),
+                          : {})),
                     }}
                   >
                     {opt}
@@ -182,6 +206,9 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
             </div>
           ))}
 
+        {/* --------------------------- */}
+        {/*      SUBMIT / CLOSE         */}
+        {/* --------------------------- */}
         {!submitted && !loading ? (
           <button
             onClick={handleSubmit}

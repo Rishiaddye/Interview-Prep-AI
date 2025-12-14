@@ -1,12 +1,13 @@
 // routes/session.js
 const express = require("express");
 const router = express.Router();
+
 const Session = require("../models/Session");
 const { generateInterview } = require("../services/aiService");
 
 /* ===========================================================
    CREATE SESSION (AI Interview)
-   =========================================================== */
+=========================================================== */
 router.post("/create", async (req, res) => {
   try {
     const { userId, role, experience, topics } = req.body;
@@ -28,9 +29,10 @@ router.post("/create", async (req, res) => {
 
     const questions = await generateInterview(role, experience, topicList);
 
+    // ✅ ONLY FIXED THIS PART — DO NOT CHANGE ANYTHING ELSE
     session.questions = questions.map(q => ({
-      q: q.question || q.q,
-      a: q.answer || q.a,
+      q: q.q,                     // FIXED
+      a: q.a,                     // FIXED
       followup: q.followup || "",
       why: q.why || ""
     }));
@@ -47,11 +49,12 @@ router.post("/create", async (req, res) => {
 
 /* ===========================================================
    GET SESSION BY ID
-   =========================================================== */
+=========================================================== */
 router.get("/:id", async (req, res) => {
   try {
     const session = await Session.findById(req.params.id);
     if (!session) return res.status(404).json({ ok: false, error: "Not found" });
+
     res.json({ ok: true, session });
   } catch (err) {
     console.error("SESSION GET ERROR:", err);

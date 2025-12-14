@@ -61,4 +61,43 @@ router.post("/login", async (req, res) => {
   }
 });
 
+// ⭐ GOOGLE LOGIN (Create user if not exists)
+router.post("/google-login", async (req, res) => {
+  try {
+    const { fullName, email, profilePic } = req.body;
+
+    // Check if user exists
+    let user = await User.findOne({ email });
+
+    // If user doesn't exist → create one
+    if (!user) {
+      user = await User.create({
+        fullName,
+        email,
+        profilePic,
+        passwordHash: null, // Google login doesn't need password
+      });
+    } else {
+      // Update Google photo if changed
+      if (profilePic && user.profilePic !== profilePic) {
+        user.profilePic = profilePic;
+        await user.save();
+      }
+    }
+
+    return res.json({
+      message: "Google login successful",
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        profilePic: user.profilePic,
+      },
+    });
+  } catch (err) {
+    console.error("Google Login Error:", err);
+    res.status(500).json({ message: "Server error during Google login" });
+  }
+});
+
 module.exports = router;

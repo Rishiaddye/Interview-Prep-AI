@@ -96,7 +96,7 @@ const InterviewPrep = () => {
     setActiveIndex(null);
   };
 
-  // 👇 FINAL FIX: Black clean button in light mode, White glowing in dark mode
+  // Button styling (already correct)
   const buttonStyle =
     theme === "light"
       ? {
@@ -111,7 +111,7 @@ const InterviewPrep = () => {
           gap: "12px",
           fontSize: "15px",
           transition: "0.25s",
-          boxShadow: "none", // ❌ glow removed
+          boxShadow: "none",
         }
       : {
           background: "#fff",
@@ -125,7 +125,30 @@ const InterviewPrep = () => {
           gap: "12px",
           fontSize: "15px",
           transition: "0.25s",
-          boxShadow: "0px 0px 22px rgba(255,255,255,0.25)", // glow stays
+          boxShadow: "0px 0px 22px rgba(255,255,255,0.25)",
+        };
+
+  // 👇 NEW Badge Style (correctly placed here)
+  const badgeStyle =
+    theme === "light"
+      ? {
+          background: "#000",
+          color: "#fff",
+          padding: "8px 16px",
+          borderRadius: "18px",
+          fontSize: "14px",
+          fontWeight: "500",
+          border: "none",
+        }
+      : {
+          background: "rgba(255,255,255,0.9)",
+          color: "#000",
+          padding: "8px 16px",
+          borderRadius: "18px",
+          fontSize: "14px",
+          fontWeight: "500",
+          border: "1px solid rgba(255,255,255,0.3)",
+          boxShadow: "0px 0px 20px rgba(255,255,255,0.5)",
         };
 
   return (
@@ -150,11 +173,7 @@ const InterviewPrep = () => {
         />
 
         <div style={{ maxWidth: 1400, margin: "30px auto", padding: "0 28px" }}>
-          {loading && (
-            <div style={{ padding: 40, color: "var(--text)" }}>
-              Loading session...
-            </div>
-          )}
+          {loading && <div style={{ padding: 40, color: "var(--text)" }}>Loading session...</div>}
 
           {!loading && session && (
             <>
@@ -165,6 +184,18 @@ const InterviewPrep = () => {
               <p style={{ fontSize: 16, color: "var(--secondary-text)", marginBottom: 16 }}>
                 {session.topics?.join(", ")}
               </p>
+
+              {/* BADGES INSERTED HERE */}
+              <div style={{ display: "flex", gap: "12px", marginBottom: "22px" }}>
+                <span style={badgeStyle}>Experience: {session?.experience || "N/A"}</span>
+                <span style={badgeStyle}>{session?.questions?.length || 0} Q&A</span>
+                <span style={badgeStyle}>
+                  Last Updated:{" "}
+                  {session?.updatedAt
+                    ? new Date(session.updatedAt).toLocaleDateString()
+                    : "N/A"}
+                </span>
+              </div>
 
               <h3 style={{ fontSize: 22, fontWeight: 700, marginBottom: 20, color: "var(--text)" }}>
                 Interview Q & A
@@ -243,17 +274,6 @@ const InterviewPrep = () => {
       `}</style>
     </>
   );
-};
-
-const badgeStyle = {
-  padding: "6px 14px",
-  borderRadius: 20,
-  fontSize: 13,
-  background: "var(--card)",
-  color: "var(--text)",
-  fontWeight: 500,
-  border: "1px solid var(--border)",
-  transition: "all 0.35s ease",
 };
 
 export default InterviewPrep;

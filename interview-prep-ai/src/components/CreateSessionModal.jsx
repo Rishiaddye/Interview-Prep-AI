@@ -17,9 +17,7 @@ function saveSessionToHistory(id, role, experience, topics) {
     date: new Date().toISOString(),
   };
 
-  history.unshift(entry);
-
-  // Keep last 15 only
+  history.unshift(entry); // Keep last 15 only
   localStorage.setItem("sessionHistory", JSON.stringify(history.slice(0, 15)));
 }
 
@@ -52,7 +50,6 @@ const CreateSessionModal = ({ role, close }) => {
 
   const create = async () => {
     setLoading(true);
-
     try {
       let session = await apiCreateSession({
         role: role.title,
@@ -92,18 +89,42 @@ const CreateSessionModal = ({ role, close }) => {
   return (
     <div style={modalStyle}>
       <div style={boxStyle}>
-        <h3 style={{ marginTop: 0, color: "#1b1b1b", fontSize: 18, fontWeight: 700 }}>
+        <h3
+          style={{
+            marginTop: 0,
+            color: "#1b1b1b",
+            fontSize: 18,
+            fontWeight: 700,
+          }}
+        >
           Start New Interview Journey
         </h3>
-        <strong style={{ color: "#1b1b1b", fontSize: 16, display: "block", marginBottom: 12 }}>
+
+        <strong
+          style={{
+            color: "#1b1b1b",
+            fontSize: 16,
+            display: "block",
+            marginBottom: 12,
+          }}
+        >
           {role?.title}
         </strong>
 
         {/* Years of Experience */}
         <div style={{ marginTop: 12 }}>
-          <label style={{ display: "block", marginBottom: 6, color: "#1b1b1b", fontWeight: 600, fontSize: 13 }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: 6,
+              color: "#1b1b1b",
+              fontWeight: 600,
+              fontSize: 13,
+            }}
+          >
             Years of Experience
           </label>
+
           <input
             value={experience}
             onChange={(e) => setExperience(e.target.value)}
@@ -124,9 +145,18 @@ const CreateSessionModal = ({ role, close }) => {
 
         {/* Topics */}
         <div style={{ marginTop: 12 }}>
-          <label style={{ display: "block", marginBottom: 6, color: "#1b1b1b", fontWeight: 600, fontSize: 13 }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: 6,
+              color: "#1b1b1b",
+              fontWeight: 600,
+              fontSize: 13,
+            }}
+          >
             Topics (comma separated)
           </label>
+
           <input
             value={topics}
             onChange={(e) => setTopics(e.target.value)}
@@ -146,7 +176,14 @@ const CreateSessionModal = ({ role, close }) => {
         </div>
 
         {/* Buttons */}
-        <div style={{ display: "flex", gap: 10, marginTop: 16, justifyContent: "flex-end" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginTop: 16,
+            justifyContent: "flex-end",
+          }}
+        >
           <button
             onClick={close}
             style={{
@@ -161,6 +198,7 @@ const CreateSessionModal = ({ role, close }) => {
           >
             Cancel
           </button>
+
           <button
             onClick={create}
             disabled={loading}
