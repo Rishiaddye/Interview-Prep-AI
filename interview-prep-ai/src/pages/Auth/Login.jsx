@@ -6,7 +6,6 @@ import Input from "../../components/inputs/input.jsx";
 import { auth, googleProvider } from "../../firebase";
 import { signInWithPopup } from "firebase/auth";
 
-// 🔥 Backend URL from Vite env
 const API_URL = import.meta.env.VITE_API_URL;
 
 const Login = ({ setCurrentPage }) => {
@@ -38,10 +37,7 @@ const Login = ({ setCurrentPage }) => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Login failed");
 
-      // ✅ SAVE JWT TOKEN (CRITICAL)
       localStorage.setItem("token", data.token);
-
-      // ✅ SAVE USER
       login(data.user);
       localStorage.setItem("user", JSON.stringify(data.user));
 
@@ -72,10 +68,7 @@ const Login = ({ setCurrentPage }) => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Google login failed");
 
-      // ✅ SAVE JWT TOKEN
       localStorage.setItem("token", data.token);
-
-      // ✅ SAVE USER
       login(data.user);
       localStorage.setItem("user", JSON.stringify(data.user));
 
@@ -87,49 +80,100 @@ const Login = ({ setCurrentPage }) => {
   };
 
   return (
-    <div className="flex flex-col items-center text-center px-2 py-4">
-      <h3 className="text-lg font-semibold">Welcome Back 👋</h3>
-
-      <form onSubmit={handleLogin} className="w-full mt-4">
-        <Input
-          label="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-
-        <Input
-          label="Password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
-        {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
-
-        <button
-          type="submit"
-          className="w-full bg-black text-white py-2 rounded mt-4"
-        >
-          LOGIN
-        </button>
-      </form>
-
-      <button
-        onClick={handleGoogleLogin}
-        className="w-full mt-3 border py-2 rounded"
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.35)",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        zIndex: 3000,
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 420,
+          background: "#fff",
+          borderRadius: 16,
+          padding: 24,
+          boxShadow: "0 25px 60px rgba(0,0,0,0.25)",
+        }}
       >
-        Continue with Google
-      </button>
+        <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>
+          Welcome Back 👋
+        </h2>
+        <p style={{ opacity: 0.6, marginBottom: 20 }}>
+          Please enter your details to continue.
+        </p>
 
-      <p className="mt-3 text-sm">
-        Don’t have an account?{" "}
+        <form onSubmit={handleLogin}>
+          <Input
+            label="Email Address"
+            placeholder="john@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+
+          <Input
+            label="Password"
+            type="password"
+            placeholder="Min 8 characters"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+
+          {error && (
+            <p style={{ color: "red", fontSize: 13, marginTop: 6 }}>
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            style={{
+              width: "100%",
+              marginTop: 16,
+              padding: "12px",
+              borderRadius: 10,
+              border: "none",
+              background: "linear-gradient(90deg,#000,#222)",
+              color: "#fff",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            LOGIN
+          </button>
+        </form>
+
         <button
-          onClick={() => setCurrentPage("signup")}
-          className="underline"
+          onClick={handleGoogleLogin}
+          style={{
+            width: "100%",
+            marginTop: 12,
+            padding: "11px",
+            borderRadius: 10,
+            border: "1px solid #ddd",
+            background: "#f9f9f9",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
         >
-          Sign up
+          Continue with Google
         </button>
-      </p>
+
+        <p style={{ marginTop: 16, fontSize: 14 }}>
+          Don’t have an account?{" "}
+          <span
+            style={{ textDecoration: "underline", cursor: "pointer" }}
+            onClick={() => setCurrentPage("signup")}
+          >
+            Sign Up
+          </span>
+        </p>
+      </div>
     </div>
   );
 };
