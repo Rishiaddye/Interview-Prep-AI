@@ -13,11 +13,12 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://interview-prep-ai-ecru.vercel.app"
+      /^https:\/\/.*\.vercel\.app$/   // allow ALL Vercel domains
     ],
     credentials: true,
   })
 );
+
 
 app.use(express.json());
 
