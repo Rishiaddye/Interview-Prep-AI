@@ -48,14 +48,14 @@ const InterviewPrep = () => {
     }, 1200);
   };
 
-  // ✅ FIXED LEARN MORE (LOGIC ONLY)
+  // 🔥 FIXED LEARN MORE (LOGIC ONLY — UI UNCHANGED)
   const handleLearnMore = async (qObj, idx) => {
     try {
       setActiveIndex(idx);
       setLearningLoading(true);
 
       const token = localStorage.getItem("token");
-      if (!token) throw new Error("User not authenticated");
+      if (!token) throw new Error("Not authenticated");
 
       const res = await fetch(`${API_URL}/ai/learn-more`, {
         method: "POST",
@@ -104,7 +104,6 @@ const InterviewPrep = () => {
     setActiveIndex(null);
   };
 
-  // Button styling (already correct)
   const buttonStyle =
     theme === "light"
       ? {
@@ -230,6 +229,42 @@ const InterviewPrep = () => {
                     isActive={activeIndex === idx}
                   />
                 ))}
+
+                {visibleCount < session.questions.length && (
+                  <div style={{ display: "flex", justifyContent: "center", marginTop: 25 }}>
+                    <button onClick={handleLoadMore} disabled={loadMoreLoading} style={buttonStyle}>
+                      {loadMoreLoading ? (
+                        <div
+                          style={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: "50%",
+                            border: `2px solid ${theme === "light" ? "#fff" : "#000"}`,
+                            borderTop: "2px solid transparent",
+                            animation: "spin .6s linear infinite",
+                          }}
+                        />
+                      ) : (
+                        <>
+                          <div
+                            style={{
+                              width: 20,
+                              height: 14,
+                              display: "flex",
+                              flexDirection: "column",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            <span style={{ height: 2, width: "100%", background: "currentColor" }} />
+                            <span style={{ height: 2, width: "65%", background: "currentColor" }} />
+                            <span style={{ height: 2, width: "40%", background: "currentColor" }} />
+                          </div>
+                          Load More
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
               </SessionView>
             </>
           )}
