@@ -1,5 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
   const [quiz, setQuiz] = useState([]);
@@ -13,35 +15,48 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
   // ----------------------------------------
   useEffect(() => {
     if (!open) return;
+    if (!session?.questions?.length) return;
 
     const loadMCQs = async () => {
       try {
         setLoading(true);
 
-        // Format Q&A for backend
+        const token = localStorage.getItem("token");
+        if (!token) throw new Error("No auth token");
+
+        // Format Q&A for backend (NO UI CHANGE)
         const formattedQuestions = session.questions.map((q) => ({
-          q: q.question || q.q,
-          a: q.answer || q.a,
+          q: q.q,
+          a: q.a,
         }));
 
         const res = await axios.post(
-          "http://localhost:5000/api/ai/mcq",
-          { questions: formattedQuestions }
+          `${API_URL}/ai/mcqs`,
+          {
+            questions: formattedQuestions,
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
 
-        if (res.data.ok && res.data.mcqs.length > 0) {
+        if (res.data?.ok && Array.isArray(res.data.mcqs)) {
           setQuiz(res.data.mcqs);
         } else {
           setQuiz([]);
         }
       } catch (err) {
-        console.error("MCQ fetch failed:", err);
+        console.error("❌ MCQ fetch failed:", err.response?.data || err.message);
+        setQuiz([]);
+      } finally {
+        setLoading(false);
+        setAnswers({});
+        setSubmitted(false);
+        setScore(0);
       }
-
-      setLoading(false);
-      setAnswers({});
-      setSubmitted(false);
-      setScore(0);
     };
 
     loadMCQs();
@@ -78,7 +93,7 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
   // SEND SCORE TO PARENT
   useEffect(() => {
     if (submitted) onSubmitScore(percent);
-  }, [submitted, percent]);
+  }, [submitted, percent, onSubmitScore]);
 
   if (!open) return null;
 
@@ -93,8 +108,6 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
         alignItems: "center",
         zIndex: 2400,
       }}
-
-      // ⭐⭐⭐ FIXED: Prevent modal auto-closing!
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -183,7 +196,6 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
                       transition: "all 0.2s ease",
                       fontWeight: 500,
                       fontSize: window.innerWidth < 768 ? 12 : 14,
-
                       ...(submitted &&
                         (isCorrect
                           ? {
