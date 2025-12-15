@@ -13,7 +13,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://interview-prep-ai-rose.vercel.app/"
+      "https://interview-prep-ai-ecru.vercel.app"
     ],
     credentials: true,
   })
