@@ -1,86 +1,111 @@
-// routes/ai.js
+// backend/routes/ai.js
+
 const express = require("express");
 const router = express.Router();
 
+const authMiddleware = require("../middleware/authMiddleware");
+
 const {
   generateInterview,
-  generateLongExplanation,
-  generateMCQs
+  generateLearnMore,
+  generateMCQs,
 } = require("../services/aiService");
 
 /* ===========================================================
-   1. Generate Interview Questions
+   1️⃣ Generate Interview Questions (JWT Protected)
+   POST /api/ai/generate
 =========================================================== */
-router.post("/generate", async (req, res) => {
-  const { role, experience, topics } = req.body;
-
+router.post("/generate", authMiddleware, async (req, res) => {
   try {
-    const questions = await generateInterview(role, experience, topics || []);
+    const { role, experience, topics } = req.body;
+
+    if (!role || !experience) {
+      return res.status(400).json({
+        ok: false,
+        error: "Role and experience are required",
+      });
+    }
+
+    const questionList = await generateInterview(
+      role,
+      experience,
+      topics || []
+    );
 
     res.json({
       ok: true,
-      questions: questions.map(item => ({
-        q: item.q,          // FIXED
-        a: item.a,          // FIXED
-        followup: item.followup,
-        why: item.why
-      }))
+      questions: questionList.map((q) => ({
+        q: q.q,
+        a: q.a,
+        followup: q.followup || "",
+        why: q.why || "",
+      })),
     });
   } catch (err) {
-    console.error("AI /generate error:", err);
+    console.error("AI /generate ERROR:", err);
     res.status(500).json({
       ok: false,
-      message: "AI generation failed"
-    });
-  }
-});
-
-/* ===========================================================
-   2. Learn Mode (Long Explanation)
-=========================================================== */
-router.post("/learn", async (req, res) => {
-  try {
-    const { question, answer } = req.body;
-
-    if (!question || !answer) {
-      return res.status(400).json({
-        ok: false,
-        message: "Missing question or answer"
-      });
-    }
-
-    const longAnswer = await generateLongExplanation(question, answer);
-    res.json({ ok: true, longAnswer });
-  } catch (err) {
-    console.error("AI /learn error:", err);
-    res.status(500).json({
-      ok: false,
-      message: "AI learn failed"
+      error: "Failed to generate interview questions",
     });
   }
 });
 
 /* ===========================================================
-   3. Generate MCQs
+   2️⃣ Learn More (Long Explanation) — JWT Protected
+   POST /api/ai/learn-more
 =========================================================== */
-router.post("/mcq", async (req, res) => {
+router.post("/learn-more", authMiddleware, async (req, res) => {
   try {
-    const { questions } = req.body;
+    const { question } = req.body;
 
-    if (!questions || !Array.isArray(questions) || questions.length === 0) {
+    if (!question) {
       return res.status(400).json({
         ok: false,
-        message: "No valid questions provided"
+        error: "Question is required",
       });
     }
 
-    const mcqs = await generateMCQs(questions);
-    res.json({ ok: true, mcqs });
+    const explanation = await generateLearnMore(question);
+
+    res.json({
+      ok: true,
+      explanation, // 👈 frontend expects this
+    });
   } catch (err) {
-    console.error("AI /mcq error:", err);
+    console.error("AI /learn-more ERROR:", err);
     res.status(500).json({
       ok: false,
-      message: "MCQ generation failed"
+      error: "Failed to generate explanation",
+    });
+  }
+});
+
+/* ===========================================================
+   3️⃣ Generate MCQs (Test Yourself) — JWT Protected
+   POST /api/ai/mcqs
+=========================================================== */
+router.post("/mcqs", authMiddleware, async (req, res) => {
+  try {
+    const { role, experience, topics } = req.body;
+
+    if (!role || !experience) {
+      return res.status(400).json({
+        ok: false,
+        error: "Role and experience are required",
+      });
+    }
+
+    const mcqs = await generateMCQs(role, experience, topics || []);
+
+    res.json({
+      ok: true,
+      mcqs, // 👈 MUST be array of 10 MCQs
+    });
+  } catch (err) {
+    console.error("AI /mcqs ERROR:", err);
+    res.status(500).json({
+      ok: false,
+      error: "Failed to generate MCQs",
     });
   }
 });
