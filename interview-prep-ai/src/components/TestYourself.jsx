@@ -14,31 +14,32 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
   // LOAD MCQs WHEN MODAL OPENS
   // ----------------------------------------
   useEffect(() => {
-    if (!open) return;
-    if (!session?.questions?.length) return;
+    if (!open || !session?.questions?.length) return;
 
     const loadMCQs = async () => {
       try {
         setLoading(true);
 
         const token = localStorage.getItem("token");
-        if (!token) throw new Error("No auth token");
+        if (!token) {
+          console.error("❌ No auth token found");
+          setQuiz([]);
+          return;
+        }
 
-        // Format Q&A for backend (NO UI CHANGE)
+        // Format Q&A for backend
         const formattedQuestions = session.questions.map((q) => ({
           q: q.q,
           a: q.a,
         }));
 
         const res = await axios.post(
-          `${API_URL}/ai/mcqs`,
-          {
-            questions: formattedQuestions,
-          },
+          `${API_URL}/ai/mcq`,
+          { questions: formattedQuestions },
           {
             headers: {
-              "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
             },
           }
         );
@@ -46,6 +47,7 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
         if (res.data?.ok && Array.isArray(res.data.mcqs)) {
           setQuiz(res.data.mcqs);
         } else {
+          console.error("❌ Invalid MCQ response:", res.data);
           setQuiz([]);
         }
       } catch (err) {
@@ -154,17 +156,9 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
           </h3>
         )}
 
-        {/* --------------------------- */}
-        {/*        MCQ LIST             */}
-        {/* --------------------------- */}
         {!loading &&
           quiz.map((item, idx) => (
-            <div
-              key={idx}
-              style={{
-                marginBottom: window.innerWidth < 768 ? 8 : 20,
-              }}
-            >
+            <div key={idx} style={{ marginBottom: window.innerWidth < 768 ? 8 : 20 }}>
               <b
                 style={{
                   color: "#1b1b1b",
@@ -186,27 +180,19 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
                     onClick={() => handleSelect(idx, oi)}
                     style={{
                       marginTop: 4,
-                      padding:
-                        window.innerWidth < 768 ? "6px 8px" : "10px 12px",
+                      padding: window.innerWidth < 768 ? "6px 8px" : "10px 12px",
                       borderRadius: 6,
                       cursor: "pointer",
                       border: "1px solid #ddd",
                       background: chosen ? "#eef6ff" : "#fff",
                       color: "#1b1b1b",
-                      transition: "all 0.2s ease",
                       fontWeight: 500,
                       fontSize: window.innerWidth < 768 ? 12 : 14,
                       ...(submitted &&
                         (isCorrect
-                          ? {
-                              borderColor: "#2ecc71",
-                              background: "#eaffea",
-                            }
+                          ? { borderColor: "#2ecc71", background: "#eaffea" }
                           : chosen
-                          ? {
-                              borderColor: "#e74c3c",
-                              background: "#ffe9e9",
-                            }
+                          ? { borderColor: "#e74c3c", background: "#ffe9e9" }
                           : {})),
                     }}
                   >
@@ -217,9 +203,6 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
             </div>
           ))}
 
-        {/* --------------------------- */}
-        {/*      SUBMIT / CLOSE         */}
-        {/* --------------------------- */}
         {!submitted && !loading ? (
           <button
             onClick={handleSubmit}
