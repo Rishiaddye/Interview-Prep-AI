@@ -1,25 +1,57 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api/session";
+// ✅ Use env-based backend URL
+const API_URL = `${import.meta.env.VITE_API_URL}/session`;
 
-export const createSession = async (sessionData) => {
+// ==============================
+// CREATE SESSION (JWT PROTECTED)
+// ==============================
+export const createSession = async ({ role, experience, topics }) => {
   try {
-    const res = await axios.post(`${API_URL}/create`, sessionData);
-    return res.data;
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("No auth token found");
+    }
+
+    const res = await axios.post(
+      `${API_URL}/create`,
+      {
+        role,
+        experience,
+        topics, // ❌ DO NOT send userId
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return res.data; // { ok: true, session }
   } catch (err) {
-    console.log("❌ Create Session Error:", err);
+    console.error("❌ Create Session Error:", err.response?.data || err.message);
     return null;
   }
 };
 
+// ==============================
+// GET SESSION BY ID
+// ==============================
 export const getSession = async (id) => {
   try {
-    const res = await axios.get(`${API_URL}/${id}`);
+    const token = localStorage.getItem("token");
 
-    // FIX: return only actual session object
+    const res = await axios.get(`${API_URL}/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
     return { ok: true, session: res.data.session };
   } catch (err) {
-    console.log("❌ Get Session Error:", err);
+    console.error("❌ Get Session Error:", err.response?.data || err.message);
     return { ok: false, error: err };
   }
 };
