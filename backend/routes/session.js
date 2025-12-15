@@ -4,13 +4,17 @@ const router = express.Router();
 
 const Session = require("../models/Session");
 const { generateInterview } = require("../services/aiService");
+const authMiddleware = require("../middleware/authMiddleware");
 
 /* ===========================================================
-   CREATE SESSION (AI Interview)
+   CREATE SESSION (AI Interview) — JWT PROTECTED
 =========================================================== */
-router.post("/create", async (req, res) => {
+router.post("/create", authMiddleware, async (req, res) => {
   try {
-    const { userId, role, experience, topics } = req.body;
+    // 🔐 USER ID FROM JWT (NOT FROM BODY)
+    const userId = req.user.id;
+
+    const { role, experience, topics } = req.body;
 
     const topicList = Array.isArray(topics)
       ? topics
@@ -19,22 +23,21 @@ router.post("/create", async (req, res) => {
       : [];
 
     const session = new Session({
-      userId: userId || null,
+      userId,
       role,
       experience,
-      topics: topicList
+      topics: topicList,
     });
 
     await session.save();
 
     const questions = await generateInterview(role, experience, topicList);
 
-    // ✅ ONLY FIXED THIS PART — DO NOT CHANGE ANYTHING ELSE
     session.questions = questions.map(q => ({
-      q: q.q,                     // FIXED
-      a: q.a,                     // FIXED
+      q: q.q,
+      a: q.a,
       followup: q.followup || "",
-      why: q.why || ""
+      why: q.why || "",
     }));
 
     session.aiGenerated = true;
@@ -48,12 +51,19 @@ router.post("/create", async (req, res) => {
 });
 
 /* ===========================================================
-   GET SESSION BY ID
+   GET SESSION BY ID — JWT PROTECTED
 =========================================================== */
-router.get("/:id", async (req, res) => {
+router.get("/:id", authMiddleware, async (req, res) => {
   try {
     const session = await Session.findById(req.params.id);
-    if (!session) return res.status(404).json({ ok: false, error: "Not found" });
+
+    if (!session)
+      return res.status(404).json({ ok: false, error: "Not found" });
+
+    // 🔐 Optional: ensure session belongs to logged-in user
+    if (session.userId.toString() !== req.user.id) {
+      return res.status(403).json({ ok: false, error: "Unauthorized" });
+    }
 
     res.json({ ok: true, session });
   } catch (err) {
