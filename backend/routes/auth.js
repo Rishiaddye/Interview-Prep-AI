@@ -1,15 +1,32 @@
 const express = require("express");
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+
 const router = express.Router();
 
+// 🔐 JWT helper
+const createToken = (user) => {
+  return jwt.sign(
+    {
+      id: user._id,
+      email: user.email,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+};
+
+// =======================
 // SIGNUP
+// =======================
 router.post("/signup", async (req, res) => {
   try {
     const { fullName, email, password, profilePic } = req.body;
 
     const already = await User.findOne({ email });
-    if (already) return res.status(400).json({ message: "User already exists" });
+    if (already)
+      return res.status(400).json({ message: "User already exists" });
 
     const hash = await bcrypt.hash(password, 10);
 
@@ -17,16 +34,19 @@ router.post("/signup", async (req, res) => {
       fullName,
       email,
       passwordHash: hash,
-      profilePic: profilePic || null
+      profilePic: profilePic || null,
     });
+
+    const token = createToken(newUser);
 
     res.status(201).json({
       message: "Signup successful",
+      token,
       user: {
         id: newUser._id,
         fullName: newUser.fullName,
         email: newUser.email,
-        profilePic: newUser.profilePic
+        profilePic: newUser.profilePic,
       },
     });
   } catch (err) {
@@ -35,25 +55,35 @@ router.post("/signup", async (req, res) => {
   }
 });
 
+// =======================
 // LOGIN
+// =======================
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: "User not found" });
+    if (!user)
+      return res.status(400).json({ message: "User not found" });
+
+    if (!user.passwordHash)
+      return res.status(400).json({ message: "Use Google login" });
 
     const match = await bcrypt.compare(password, user.passwordHash);
-    if (!match) return res.status(400).json({ message: "Wrong password" });
+    if (!match)
+      return res.status(400).json({ message: "Wrong password" });
+
+    const token = createToken(user);
 
     res.json({
       message: "Login successful",
+      token,
       user: {
         id: user._id,
         fullName: user.fullName,
         email: user.email,
-        profilePic: user.profilePic
-      }
+        profilePic: user.profilePic,
+      },
     });
   } catch (err) {
     console.error("Login Error:", err);
@@ -61,32 +91,32 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// ⭐ GOOGLE LOGIN (Create user if not exists)
+// =======================
+// GOOGLE LOGIN
+// =======================
 router.post("/google-login", async (req, res) => {
   try {
     const { fullName, email, profilePic } = req.body;
 
-    // Check if user exists
     let user = await User.findOne({ email });
 
-    // If user doesn't exist → create one
     if (!user) {
       user = await User.create({
         fullName,
         email,
         profilePic,
-        passwordHash: null, // Google login doesn't need password
+        passwordHash: null,
       });
-    } else {
-      // Update Google photo if changed
-      if (profilePic && user.profilePic !== profilePic) {
-        user.profilePic = profilePic;
-        await user.save();
-      }
+    } else if (profilePic && user.profilePic !== profilePic) {
+      user.profilePic = profilePic;
+      await user.save();
     }
 
-    return res.json({
+    const token = createToken(user);
+
+    res.json({
       message: "Google login successful",
+      token,
       user: {
         id: user._id,
         fullName: user.fullName,
