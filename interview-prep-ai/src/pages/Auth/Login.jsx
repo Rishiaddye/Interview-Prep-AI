@@ -6,6 +6,9 @@ import Input from "../../components/inputs/input.jsx";
 import { auth, googleProvider } from "../../firebase";
 import { signInWithPopup } from "firebase/auth";
 
+// ✅ BACKEND URL (IMPORTANT)
+const API_URL = import.meta.env.VITE_API_URL;
+
 const Login = ({ setCurrentPage }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -14,45 +17,47 @@ const Login = ({ setCurrentPage }) => {
   const { login } = useUser();
   const navigate = useNavigate();
 
+  // =========================
+  // EMAIL / PASSWORD LOGIN
+  // =========================
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError("");
+    setError(null);
 
     if (!email.trim() || !password.trim()) {
       return setError("All fields are required.");
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/auth/login", {
+      const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
-
-      if (!res.ok) return setError(data.message || "Invalid login.");
+      if (!res.ok) throw new Error(data.message || "Invalid login");
 
       const loggedUser = {
-        id: data.user?.id,
-        fullName: data.user?.fullName,
-        email: data.user?.email,
-        profilePic: data.user?.profilePic || "/default-avatar.png",
+        id: data.user.id,
+        fullName: data.user.fullName,
+        email: data.user.email,
+        profilePic: data.user.profilePic || "/default-avatar.png",
       };
 
       login(loggedUser);
       localStorage.setItem("user", JSON.stringify(loggedUser));
 
-      alert("🎉 Login Successful!");
       navigate("/dashboard");
-
-    } catch (error) {
-      console.error("Login Error:", error);
+    } catch (err) {
+      console.error("Login Error:", err);
       setError("Server error. Please check backend connection.");
     }
   };
 
-  // ⭐ NEW GOOGLE LOGIN FIX
+  // =========================
+  // GOOGLE LOGIN (FIXED)
+  // =========================
   const handleGoogleLogin = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
@@ -60,23 +65,24 @@ const Login = ({ setCurrentPage }) => {
       const googleUser = {
         fullName: result.user.displayName,
         email: result.user.email,
-        profilePic: result.user.photoURL, // ⭐ IMPORTANT
+        profilePic: result.user.photoURL,
       };
 
-      // 🔥 Send to backend so profile pic will always persist
-      await fetch("http://localhost:5000/api/auth/google-login", {
+      // ✅ SEND GOOGLE USER TO BACKEND
+      const res = await fetch(`${API_URL}/auth/google-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(googleUser),
       });
 
-      // Save locally + context
-      login(googleUser);
-      localStorage.setItem("user", JSON.stringify(googleUser));
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
 
-      alert("🎉 Logged in with Google!");
+      // ✅ USE BACKEND USER (VERY IMPORTANT)
+      login(data.user);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
       navigate("/dashboard");
-
     } catch (err) {
       console.error("Google Auth Error:", err);
       setError("Google login failed. Try again.");
@@ -118,7 +124,7 @@ const Login = ({ setCurrentPage }) => {
           LOGIN
         </button>
 
-        {/* ⭐ GOOGLE BUTTON BELOW LOGIN */}
+        {/* GOOGLE LOGIN */}
         <button
           type="button"
           onClick={handleGoogleLogin}
