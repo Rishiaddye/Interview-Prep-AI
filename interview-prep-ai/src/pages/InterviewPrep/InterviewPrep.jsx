@@ -6,6 +6,8 @@ import SessionView from "../../components/SessionView";
 import { getSession } from "../../apis/sessionApi";
 import { useTheme } from "../../context/themeContext";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const InterviewPrep = () => {
   const { sessionId } = useParams();
   const { theme } = useTheme();
@@ -46,17 +48,23 @@ const InterviewPrep = () => {
     }, 1200);
   };
 
+  // ✅ FIXED LEARN MORE (LOGIC ONLY)
   const handleLearnMore = async (qObj, idx) => {
     try {
       setActiveIndex(idx);
       setLearningLoading(true);
 
-      const res = await fetch("/api/ai/learn", {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("User not authenticated");
+
+      const res = await fetch(`${API_URL}/ai/learn-more`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           question: qObj.q,
-          answer: qObj.a || qObj.answer || qObj.a,
         }),
       });
 
@@ -66,8 +74,8 @@ const InterviewPrep = () => {
         q: qObj.q,
         a: qObj.a || qObj.answer || qObj.a,
         longAnswer:
-          data?.ok && data.longAnswer
-            ? data.longAnswer
+          data?.ok && data.explanation
+            ? data.explanation
             : "<p>Could not generate explanation.</p>",
       });
 
@@ -128,7 +136,6 @@ const InterviewPrep = () => {
           boxShadow: "0px 0px 22px rgba(255,255,255,0.25)",
         };
 
-  // 👇 NEW Badge Style (correctly placed here)
   const badgeStyle =
     theme === "light"
       ? {
@@ -185,7 +192,6 @@ const InterviewPrep = () => {
                 {session.topics?.join(", ")}
               </p>
 
-              {/* BADGES INSERTED HERE */}
               <div style={{ display: "flex", gap: "12px", marginBottom: "22px" }}>
                 <span style={badgeStyle}>Experience: {session?.experience || "N/A"}</span>
                 <span style={badgeStyle}>{session?.questions?.length || 0} Q&A</span>
@@ -224,42 +230,6 @@ const InterviewPrep = () => {
                     isActive={activeIndex === idx}
                   />
                 ))}
-
-                {visibleCount < session.questions.length && (
-                  <div style={{ display: "flex", justifyContent: "center", marginTop: 25 }}>
-                    <button onClick={handleLoadMore} disabled={loadMoreLoading} style={buttonStyle}>
-                      {loadMoreLoading ? (
-                        <div
-                          style={{
-                            width: 16,
-                            height: 16,
-                            borderRadius: "50%",
-                            border: `2px solid ${theme === "light" ? "#fff" : "#000"}`,
-                            borderTop: "2px solid transparent",
-                            animation: "spin .6s linear infinite",
-                          }}
-                        />
-                      ) : (
-                        <>
-                          <div
-                            style={{
-                              width: 20,
-                              height: 14,
-                              display: "flex",
-                              flexDirection: "column",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <span style={{ height: 2, width: "100%", background: "currentColor" }} />
-                            <span style={{ height: 2, width: "65%", background: "currentColor" }} />
-                            <span style={{ height: 2, width: "40%", background: "currentColor" }} />
-                          </div>
-                          Load More
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
               </SessionView>
             </>
           )}
