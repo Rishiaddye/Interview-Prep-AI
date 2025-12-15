@@ -84,7 +84,8 @@ const Login = ({ setCurrentPage }) => {
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.35)",
+        background: "rgba(0,0,0,0.45)",
+        backdropFilter: "blur(6px)",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
@@ -93,19 +94,55 @@ const Login = ({ setCurrentPage }) => {
     >
       <div
         style={{
+          position: "relative",
           width: "100%",
           maxWidth: 420,
-          background: "#fff",
-          borderRadius: 16,
-          padding: 24,
-          boxShadow: "0 25px 60px rgba(0,0,0,0.25)",
+          background: "#ffffff",
+          borderRadius: 20,
+          padding: "28px 26px",
+          boxShadow: "0 40px 80px rgba(0,0,0,0.35)",
         }}
       >
-        <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>
+        {/* ❌ CLOSE BUTTON (ADDED – SAME AS SIGNUP) */}
+        <button
+          onClick={() => setCurrentPage(null)}
+          style={{
+            position: "absolute",
+            top: 14,
+            right: 14,
+            width: 34,
+            height: 34,
+            borderRadius: "50%",
+            border: "none",
+            background: "#f2f2f2",
+            cursor: "pointer",
+            fontSize: 18,
+            lineHeight: "34px",
+          }}
+        >
+          ✕
+        </button>
+
+        <h2
+          style={{
+            fontSize: 24,
+            fontWeight: 700,
+            marginBottom: 6,
+            textAlign: "center",
+          }}
+        >
           Welcome Back 👋
         </h2>
-        <p style={{ opacity: 0.6, marginBottom: 20 }}>
-          Please enter your details to continue.
+
+        <p
+          style={{
+            textAlign: "center",
+            opacity: 0.65,
+            fontSize: 14,
+            marginBottom: 22,
+          }}
+        >
+          Please enter your details to continue
         </p>
 
         <form onSubmit={handleLogin}>
@@ -125,22 +162,32 @@ const Login = ({ setCurrentPage }) => {
           />
 
           {error && (
-            <p style={{ color: "red", fontSize: 13, marginTop: 6 }}>
+            <div
+              style={{
+                marginTop: 10,
+                padding: "8px 10px",
+                borderRadius: 8,
+                background: "#ffecec",
+                color: "#d63031",
+                fontSize: 13,
+              }}
+            >
               {error}
-            </p>
+            </div>
           )}
 
           <button
             type="submit"
             style={{
               width: "100%",
-              marginTop: 16,
-              padding: "12px",
-              borderRadius: 10,
+              marginTop: 18,
+              padding: "13px",
+              borderRadius: 12,
               border: "none",
-              background: "linear-gradient(90deg,#000,#222)",
+              background: "linear-gradient(180deg,#000,#1c1c1c)",
               color: "#fff",
               fontWeight: 700,
+              letterSpacing: 0.3,
               cursor: "pointer",
             }}
           >
@@ -148,26 +195,60 @@ const Login = ({ setCurrentPage }) => {
           </button>
         </form>
 
-        <button
-          onClick={handleGoogleLogin}
+        {/* Divider */}
+        <div
           style={{
-            width: "100%",
-            marginTop: 12,
-            padding: "11px",
-            borderRadius: 10,
-            border: "1px solid #ddd",
-            background: "#f9f9f9",
-            fontWeight: 600,
-            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            margin: "18px 0",
+            opacity: 0.5,
           }}
         >
-          Continue with Google
-        </button>
+          <div style={{ flex: 1, height: 1, background: "#ddd" }} />
+          <span style={{ fontSize: 12 }}>OR</span>
+          <div style={{ flex: 1, height: 1, background: "#ddd" }} />
+        </div>
 
-        <p style={{ marginTop: 16, fontSize: 14 }}>
+     <button
+  onClick={handleGoogleLogin}
+  style={{
+    width: "100%",
+    padding: "12px",
+    borderRadius: 12,
+    border: "1px solid #e0e0e0",
+    background: "#fafafa",
+    fontWeight: 600,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  }}
+>
+  <img
+    src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+    alt="Google"
+    style={{ width: 20, height: 20 }}
+  />
+  Continue with Google
+</button>
+
+
+        <p
+          style={{
+            marginTop: 18,
+            fontSize: 14,
+            textAlign: "center",
+          }}
+        >
           Don’t have an account?{" "}
           <span
-            style={{ textDecoration: "underline", cursor: "pointer" }}
+            style={{
+              textDecoration: "underline",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
             onClick={() => setCurrentPage("signup")}
           >
             Sign Up
