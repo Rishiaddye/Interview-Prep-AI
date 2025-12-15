@@ -6,7 +6,7 @@ import Input from "../../components/inputs/input.jsx";
 import { auth, googleProvider } from "../../firebase";
 import { signInWithPopup } from "firebase/auth";
 
-// ✅ BACKEND URL (IMPORTANT)
+// 🔥 Backend URL from Vite env
 const API_URL = import.meta.env.VITE_API_URL;
 
 const Login = ({ setCurrentPage }) => {
@@ -24,8 +24,8 @@ const Login = ({ setCurrentPage }) => {
     e.preventDefault();
     setError(null);
 
-    if (!email.trim() || !password.trim()) {
-      return setError("All fields are required.");
+    if (!email || !password) {
+      return setError("All fields are required");
     }
 
     try {
@@ -36,120 +36,100 @@ const Login = ({ setCurrentPage }) => {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Invalid login");
+      if (!res.ok) throw new Error(data.message || "Login failed");
 
-      const loggedUser = {
-        id: data.user.id,
-        fullName: data.user.fullName,
-        email: data.user.email,
-        profilePic: data.user.profilePic || "/default-avatar.png",
-      };
+      // ✅ SAVE JWT TOKEN (CRITICAL)
+      localStorage.setItem("token", data.token);
 
-      login(loggedUser);
-      localStorage.setItem("user", JSON.stringify(loggedUser));
-
-      navigate("/dashboard");
-    } catch (err) {
-      console.error("Login Error:", err);
-      setError("Server error. Please check backend connection.");
-    }
-  };
-
-  // =========================
-  // GOOGLE LOGIN (FIXED)
-  // =========================
-  const handleGoogleLogin = async () => {
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-
-      const googleUser = {
-        fullName: result.user.displayName,
-        email: result.user.email,
-        profilePic: result.user.photoURL,
-      };
-
-      // ✅ SEND GOOGLE USER TO BACKEND
-      const res = await fetch(`${API_URL}/auth/google-login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(googleUser),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-
-      // ✅ USE BACKEND USER (VERY IMPORTANT)
+      // ✅ SAVE USER
       login(data.user);
       localStorage.setItem("user", JSON.stringify(data.user));
 
       navigate("/dashboard");
     } catch (err) {
-      console.error("Google Auth Error:", err);
+      console.error("Login error:", err);
+      setError(err.message || "Login failed");
+    }
+  };
+
+  // =========================
+  // GOOGLE LOGIN
+  // =========================
+  const handleGoogleLogin = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+
+      const res = await fetch(`${API_URL}/auth/google-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: result.user.displayName,
+          email: result.user.email,
+          profilePic: result.user.photoURL,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Google login failed");
+
+      // ✅ SAVE JWT TOKEN
+      localStorage.setItem("token", data.token);
+
+      // ✅ SAVE USER
+      login(data.user);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      navigate("/dashboard");
+    } catch (err) {
+      console.error("Google login error:", err);
       setError("Google login failed. Try again.");
     }
   };
 
   return (
     <div className="flex flex-col items-center text-center px-2 py-4">
-      <h3 className="text-lg font-semibold text-black">Welcome Back 👋</h3>
-      <p className="text-xs text-slate-700 mt-1 mb-6">
-        Please enter your details to continue.
-      </p>
+      <h3 className="text-lg font-semibold">Welcome Back 👋</h3>
 
-      <form onSubmit={handleLogin} className="w-full">
-        <div className="grid grid-cols-1 gap-3 text-left">
-          <Input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            label="Email Address"
-            placeholder="john@example.com"
-          />
+      <form onSubmit={handleLogin} className="w-full mt-4">
+        <Input
+          label="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
 
-          <Input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            label="Password"
-            placeholder="Min 8 Characters"
-            type="password"
-          />
-        </div>
+        <Input
+          label="Password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
 
-        {error && <p className="text-red-500 text-xs pt-2">{error}</p>}
+        {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
 
         <button
           type="submit"
-          className="w-full bg-black text-white py-3 rounded-xl text-sm font-semibold
-          hover:bg-gray-800 active:scale-95 transition mt-6"
+          className="w-full bg-black text-white py-2 rounded mt-4"
         >
           LOGIN
         </button>
-
-        {/* GOOGLE LOGIN */}
-        <button
-          type="button"
-          onClick={handleGoogleLogin}
-          className="w-full flex items-center justify-center gap-3 border py-3 rounded-xl 
-          text-sm font-semibold hover:bg-gray-100 active:scale-95 transition mt-3 bg-white"
-        >
-          <img
-            src="https://cdn.jsdelivr.net/gh/edent/SuperTinyIcons/images/svg/google.svg"
-            alt="google"
-            className="w-5 h-5"
-          />
-          Continue with Google
-        </button>
-
-        <p className="text-[13px] text-slate-800 mt-3">
-          Don't have an account?{" "}
-          <button
-            type="button"
-            className="text-[#d39c44] underline font-medium"
-            onClick={() => setCurrentPage("signup")}
-          >
-            Sign Up
-          </button>
-        </p>
       </form>
+
+      <button
+        onClick={handleGoogleLogin}
+        className="w-full mt-3 border py-2 rounded"
+      >
+        Continue with Google
+      </button>
+
+      <p className="mt-3 text-sm">
+        Don’t have an account?{" "}
+        <button
+          onClick={() => setCurrentPage("signup")}
+          className="underline"
+        >
+          Sign up
+        </button>
+      </p>
     </div>
   );
 };
