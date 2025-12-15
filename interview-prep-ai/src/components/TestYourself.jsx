@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import React from "react";
 import axios from "axios";
 
 const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
