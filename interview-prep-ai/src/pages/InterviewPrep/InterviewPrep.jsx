@@ -6,8 +6,6 @@ import SessionView from "../../components/SessionView";
 import { getSession } from "../../apis/sessionApi";
 import { useTheme } from "../../context/themeContext";
 
-const API_URL = import.meta.env.VITE_API_URL;
-
 const InterviewPrep = () => {
   const { sessionId } = useParams();
   const { theme } = useTheme();
@@ -24,9 +22,6 @@ const InterviewPrep = () => {
   const rightPanelRef = useRef(null);
   const isMobile = window.innerWidth <= 768;
 
-  // =========================
-  // LOAD SESSION
-  // =========================
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -48,27 +43,20 @@ const InterviewPrep = () => {
     setTimeout(() => {
       setVisibleCount((prev) => prev + 8);
       setLoadMoreLoading(false);
-    }, 800);
+    }, 1200);
   };
 
-  // =========================
-  // ✅ FIXED LEARN MORE
-  // =========================
   const handleLearnMore = async (qObj, idx) => {
     try {
       setActiveIndex(idx);
       setLearningLoading(true);
 
-      const token = localStorage.getItem("token");
-
-      const res = await fetch(`${API_URL}/ai/learn-more`, {
+      const res = await fetch("/api/ai/learn", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           question: qObj.q,
+          answer: qObj.a || qObj.answer || qObj.a,
         }),
       });
 
@@ -76,25 +64,27 @@ const InterviewPrep = () => {
 
       setSelectedQA({
         q: qObj.q,
-        a: qObj.a,
+        a: qObj.a || qObj.answer || qObj.a,
         longAnswer:
-          data?.ok && data.explanation
-            ? data.explanation
+          data?.ok && data.longAnswer
+            ? data.longAnswer
             : "<p>Could not generate explanation.</p>",
       });
 
-      if (isMobile && rightPanelRef.current) {
+      if (isMobile) {
         setTimeout(() => {
-          rightPanelRef.current.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-          });
+          if (rightPanelRef.current) {
+            rightPanelRef.current.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+          }
         }, 200);
       }
     } catch (err) {
       setSelectedQA({
         q: qObj.q,
-        longAnswer: `<p>Error loading explanation</p>`,
+        longAnswer: `<p>Error: ${err.message}</p>`,
       });
     } finally {
       setLearningLoading(false);
@@ -106,9 +96,7 @@ const InterviewPrep = () => {
     setActiveIndex(null);
   };
 
-  // =========================
-  // STYLES
-  // =========================
+  // Button styling (already correct)
   const buttonStyle =
     theme === "light"
       ? {
@@ -122,20 +110,25 @@ const InterviewPrep = () => {
           alignItems: "center",
           gap: "12px",
           fontSize: "15px",
+          transition: "0.25s",
+          boxShadow: "none",
         }
       : {
           background: "#fff",
           color: "#000",
           padding: "14px 28px",
           borderRadius: "14px",
-          border: "1px solid rgba(255,255,255,0.25)",
+          border: "1.4px solid rgba(255,255,255,0.25)",
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
           gap: "12px",
           fontSize: "15px",
+          transition: "0.25s",
+          boxShadow: "0px 0px 22px rgba(255,255,255,0.25)",
         };
 
+  // 👇 NEW Badge Style (correctly placed here)
   const badgeStyle =
     theme === "light"
       ? {
@@ -144,6 +137,8 @@ const InterviewPrep = () => {
           padding: "8px 16px",
           borderRadius: "18px",
           fontSize: "14px",
+          fontWeight: "500",
+          border: "none",
         }
       : {
           background: "rgba(255,255,255,0.9)",
@@ -151,27 +146,60 @@ const InterviewPrep = () => {
           padding: "8px 16px",
           borderRadius: "18px",
           fontSize: "14px",
+          fontWeight: "500",
+          border: "1px solid rgba(255,255,255,0.3)",
+          boxShadow: "0px 0px 20px rgba(255,255,255,0.5)",
         };
 
   return (
     <>
       <Navbar />
 
-      <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
+      <div style={{ position: "relative", minHeight: "100vh", background: "var(--bg)" }}>
+        <div
+          style={{
+            position: "absolute",
+            top: -150,
+            left: "50%",
+            width: 900,
+            height: 500,
+            transform: "translateX(-50%)",
+            background:
+              "radial-gradient(circle, rgba(255, 217, 176, 0.5), rgba(255, 255, 255, 0.3), transparent)",
+            filter: "blur(120px)",
+            opacity: 0.35,
+            pointerEvents: "none",
+          }}
+        />
+
         <div style={{ maxWidth: 1400, margin: "30px auto", padding: "0 28px" }}>
-          {loading && <p>Loading session...</p>}
+          {loading && <div style={{ padding: 40, color: "var(--text)" }}>Loading session...</div>}
 
           {!loading && session && (
             <>
-              <h2>{session.role}</h2>
-              <p>{session.topics?.join(", ")}</p>
+              <h2 style={{ fontSize: 40, fontWeight: 700, marginBottom: 6, color: "var(--text)" }}>
+                {session.role}
+              </h2>
 
-              <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
-                <span style={badgeStyle}>Experience: {session.experience}</span>
+              <p style={{ fontSize: 16, color: "var(--secondary-text)", marginBottom: 16 }}>
+                {session.topics?.join(", ")}
+              </p>
+
+              {/* BADGES INSERTED HERE */}
+              <div style={{ display: "flex", gap: "12px", marginBottom: "22px" }}>
+                <span style={badgeStyle}>Experience: {session?.experience || "N/A"}</span>
+                <span style={badgeStyle}>{session?.questions?.length || 0} Q&A</span>
                 <span style={badgeStyle}>
-                  {session.questions.length} Q&A
+                  Last Updated:{" "}
+                  {session?.updatedAt
+                    ? new Date(session.updatedAt).toLocaleDateString()
+                    : "N/A"}
                 </span>
               </div>
+
+              <h3 style={{ fontSize: 22, fontWeight: 700, marginBottom: 20, color: "var(--text)" }}>
+                Interview Q & A
+              </h3>
 
               <SessionView
                 session={session}
@@ -198,13 +226,37 @@ const InterviewPrep = () => {
                 ))}
 
                 {visibleCount < session.questions.length && (
-                  <div style={{ display: "flex", justifyContent: "center", marginTop: 24 }}>
-                    <button
-                      onClick={handleLoadMore}
-                      disabled={loadMoreLoading}
-                      style={buttonStyle}
-                    >
-                      {loadMoreLoading ? "Loading..." : "Load More"}
+                  <div style={{ display: "flex", justifyContent: "center", marginTop: 25 }}>
+                    <button onClick={handleLoadMore} disabled={loadMoreLoading} style={buttonStyle}>
+                      {loadMoreLoading ? (
+                        <div
+                          style={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: "50%",
+                            border: `2px solid ${theme === "light" ? "#fff" : "#000"}`,
+                            borderTop: "2px solid transparent",
+                            animation: "spin .6s linear infinite",
+                          }}
+                        />
+                      ) : (
+                        <>
+                          <div
+                            style={{
+                              width: 20,
+                              height: 14,
+                              display: "flex",
+                              flexDirection: "column",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            <span style={{ height: 2, width: "100%", background: "currentColor" }} />
+                            <span style={{ height: 2, width: "65%", background: "currentColor" }} />
+                            <span style={{ height: 2, width: "40%", background: "currentColor" }} />
+                          </div>
+                          Load More
+                        </>
+                      )}
                     </button>
                   </div>
                 )}
@@ -213,6 +265,13 @@ const InterviewPrep = () => {
           )}
         </div>
       </div>
+
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </>
   );
 };
