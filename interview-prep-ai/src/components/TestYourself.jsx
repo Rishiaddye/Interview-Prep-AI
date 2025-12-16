@@ -14,7 +14,7 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
   // LOAD MCQs WHEN MODAL OPENS
   // ----------------------------------------
   useEffect(() => {
-    if (!open || !session?.questions?.length) return;
+    if (!open || !session) return;
 
     const loadMCQs = async () => {
       try {
@@ -22,20 +22,17 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
 
         const token = localStorage.getItem("token");
         if (!token) {
-          console.error("❌ No auth token found");
-          setQuiz([]);
+          console.error("❌ No auth token");
           return;
         }
 
-        // Format Q&A for backend
-        const formattedQuestions = session.questions.map((q) => ({
-          q: q.q,
-          a: q.a,
-        }));
-
         const res = await axios.post(
-          `${API_URL}/ai/mcq`,
-          { questions: formattedQuestions },
+          `${API_URL}/ai/mcqs`, // ✅ CORRECT ENDPOINT
+          {
+            role: session.role,
+            experience: session.experience,
+            topics: session.topics || [],
+          },
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -45,13 +42,19 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
         );
 
         if (res.data?.ok && Array.isArray(res.data.mcqs)) {
-          setQuiz(res.data.mcqs);
+          // Normalize MCQs for UI
+          const normalized = res.data.mcqs.map((q) => ({
+            q: q.question,
+            options: q.options,
+            correctIndex: q.options.indexOf(q.correctAnswer),
+          }));
+
+          setQuiz(normalized);
         } else {
-          console.error("❌ Invalid MCQ response:", res.data);
           setQuiz([]);
         }
       } catch (err) {
-        console.error("❌ MCQ fetch failed:", err.response?.data || err.message);
+        console.error("❌ MCQ fetch failed:", err);
         setQuiz([]);
       } finally {
         setLoading(false);
@@ -88,11 +91,10 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
   // CALCULATE PERCENTAGE
   // ----------------------------------------
   const percent = useMemo(() => {
-    if (quiz.length === 0) return 0;
+    if (!quiz.length) return 0;
     return Math.round((score / quiz.length) * 100);
   }, [score, quiz]);
 
-  // SEND SCORE TO PARENT
   useEffect(() => {
     if (submitted) onSubmitScore(percent);
   }, [submitted, percent, onSubmitScore]);
@@ -110,65 +112,36 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
         alignItems: "center",
         zIndex: 2400,
       }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
           width: "100%",
-          maxWidth: window.innerWidth < 768 ? "92%" : 800,
-          maxHeight: window.innerWidth < 768 ? "70vh" : "90vh",
+          maxWidth: 800,
+          maxHeight: "90vh",
           overflowY: "auto",
           background: "white",
           borderRadius: 12,
-          padding: window.innerWidth < 768 ? 10 : 20,
+          padding: 20,
         }}
       >
-        <h2
-          style={{
-            marginTop: 0,
-            marginBottom: window.innerWidth < 768 ? 8 : 12,
-            color: "#1b1b1b",
-            fontSize: window.innerWidth < 768 ? 14 : 22,
-            fontWeight: 700,
-          }}
-        >
-          {session?.role} — Quiz
+        <h2 style={{ fontSize: 22, fontWeight: 700 }}>
+          {session.role} — Quiz
         </h2>
 
         {loading ? (
-          <p style={{ color: "#1b1b1b" }}>Generating MCQs...</p>
+          <p>Generating MCQs...</p>
         ) : !submitted ? (
-          <p style={{ opacity: 0.7, color: "#1b1b1b" }}>
-            {quiz.length} Questions
-          </p>
+          <p>{quiz.length} Questions</p>
         ) : (
-          <h3
-            style={{
-              color: "#1b1b1b",
-              fontSize: window.innerWidth < 768 ? 14 : 18,
-              fontWeight: 700,
-            }}
-          >
-            Your Score: {percent}%
-          </h3>
+          <h3>Your Score: {percent}%</h3>
         )}
 
         {!loading &&
           quiz.map((item, idx) => (
-            <div key={idx} style={{ marginBottom: window.innerWidth < 768 ? 8 : 20 }}>
-              <b
-                style={{
-                  color: "#1b1b1b",
-                  fontSize: window.innerWidth < 768 ? 12 : 15,
-                  display: "block",
-                  marginBottom: 6,
-                }}
-              >
-                {idx + 1}. {item.q}
-              </b>
+            <div key={idx} style={{ marginBottom: 20 }}>
+              <b>{idx + 1}. {item.q}</b>
 
               {item.options.map((opt, oi) => {
                 const chosen = answers[idx] === oi;
@@ -179,20 +152,17 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
                     key={oi}
                     onClick={() => handleSelect(idx, oi)}
                     style={{
-                      marginTop: 4,
-                      padding: window.innerWidth < 768 ? "6px 8px" : "10px 12px",
+                      marginTop: 6,
+                      padding: "10px 12px",
                       borderRadius: 6,
-                      cursor: "pointer",
                       border: "1px solid #ddd",
+                      cursor: "pointer",
                       background: chosen ? "#eef6ff" : "#fff",
-                      color: "#1b1b1b",
-                      fontWeight: 500,
-                      fontSize: window.innerWidth < 768 ? 12 : 14,
                       ...(submitted &&
                         (isCorrect
-                          ? { borderColor: "#2ecc71", background: "#eaffea" }
+                          ? { background: "#eaffea", borderColor: "#2ecc71" }
                           : chosen
-                          ? { borderColor: "#e74c3c", background: "#ffe9e9" }
+                          ? { background: "#ffe9e9", borderColor: "#e74c3c" }
                           : {})),
                     }}
                   >
@@ -209,12 +179,10 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
             style={{
               padding: "10px 16px",
               borderRadius: 10,
-              border: "none",
               background: "linear-gradient(90deg,#FF9324,#FCD760)",
+              border: "none",
               color: "#fff",
               fontWeight: 700,
-              cursor: "pointer",
-              marginTop: 12,
             }}
           >
             Submit Quiz
@@ -224,13 +192,10 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
             onClick={onClose}
             style={{
               padding: "10px 16px",
-              marginTop: 12,
               borderRadius: 10,
               background: "linear-gradient(90deg,#FF9324,#FCD760)",
               border: "none",
               color: "#fff",
-              fontWeight: 600,
-              cursor: "pointer",
             }}
           >
             Close
