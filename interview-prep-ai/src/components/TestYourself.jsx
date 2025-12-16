@@ -10,9 +10,11 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
   const [score, setScore] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  // 🔥 LOAD MCQs CORRECTLY
+  // ----------------------------------------
+  // LOAD MCQs WHEN MODAL OPENS
+  // ----------------------------------------
   useEffect(() => {
-    if (!open || !session) return;
+    if (!open || !session?.questions?.length) return;
 
     const loadMCQs = async () => {
       try {
@@ -20,20 +22,24 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
 
         const token = localStorage.getItem("token");
         if (!token) {
-          console.error("No auth token");
+          console.error("❌ No auth token found");
+          setQuiz([]);
           return;
         }
 
+        // Format Q&A for backend
+        const formattedQuestions = session.questions.map((q) => ({
+          q: q.q,
+          a: q.a,
+        }));
+
         const res = await axios.post(
-          `${API_URL}/ai/mcqs`,
-          {
-            role: session.role,
-            experience: session.experience,
-            topics: session.topics || [],
-          },
+          `${API_URL}/ai/mcq`,
+          { questions: formattedQuestions },
           {
             headers: {
               Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
             },
           }
         );
@@ -41,10 +47,11 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
         if (res.data?.ok && Array.isArray(res.data.mcqs)) {
           setQuiz(res.data.mcqs);
         } else {
+          console.error("❌ Invalid MCQ response:", res.data);
           setQuiz([]);
         }
       } catch (err) {
-        console.error("MCQ error:", err.response?.data || err.message);
+        console.error("❌ MCQ fetch failed:", err.response?.data || err.message);
         setQuiz([]);
       } finally {
         setLoading(false);
@@ -57,27 +64,35 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
     loadMCQs();
   }, [open, session]);
 
+  // ----------------------------------------
   // SELECT OPTION
+  // ----------------------------------------
   const handleSelect = (qIndex, optionIndex) => {
     if (submitted) return;
     setAnswers((prev) => ({ ...prev, [qIndex]: optionIndex }));
   };
 
+  // ----------------------------------------
   // SUBMIT QUIZ
+  // ----------------------------------------
   const handleSubmit = () => {
     let s = 0;
-    quiz.forEach((q, i) => {
-      if (answers[i] === q.correctIndex) s++;
-    });
+    for (let i = 0; i < quiz.length; i++) {
+      if (answers[i] === quiz[i].correctIndex) s++;
+    }
     setScore(s);
     setSubmitted(true);
   };
 
+  // ----------------------------------------
+  // CALCULATE PERCENTAGE
+  // ----------------------------------------
   const percent = useMemo(() => {
-    if (!quiz.length) return 0;
+    if (quiz.length === 0) return 0;
     return Math.round((score / quiz.length) * 100);
   }, [score, quiz]);
 
+  // SEND SCORE TO PARENT
   useEffect(() => {
     if (submitted) onSubmitScore(percent);
   }, [submitted, percent, onSubmitScore]);
@@ -85,58 +100,142 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
   if (!open) return null;
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 2400 }}>
-      <div style={{ width: 800, maxHeight: "90vh", overflowY: "auto", background: "#fff", borderRadius: 12, padding: 20 }}>
-        <h2>{session.role} — Quiz</h2>
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.45)",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        zIndex: 2400,
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "100%",
+          maxWidth: window.innerWidth < 768 ? "92%" : 800,
+          maxHeight: window.innerWidth < 768 ? "70vh" : "90vh",
+          overflowY: "auto",
+          background: "white",
+          borderRadius: 12,
+          padding: window.innerWidth < 768 ? 10 : 20,
+        }}
+      >
+        <h2
+          style={{
+            marginTop: 0,
+            marginBottom: window.innerWidth < 768 ? 8 : 12,
+            color: "#1b1b1b",
+            fontSize: window.innerWidth < 768 ? 14 : 22,
+            fontWeight: 700,
+          }}
+        >
+          {session?.role} — Quiz
+        </h2>
 
         {loading ? (
-          <p>Generating MCQs...</p>
+          <p style={{ color: "#1b1b1b" }}>Generating MCQs...</p>
+        ) : !submitted ? (
+          <p style={{ opacity: 0.7, color: "#1b1b1b" }}>
+            {quiz.length} Questions
+          </p>
         ) : (
-          <p>{quiz.length} Questions</p>
+          <h3
+            style={{
+              color: "#1b1b1b",
+              fontSize: window.innerWidth < 768 ? 14 : 18,
+              fontWeight: 700,
+            }}
+          >
+            Your Score: {percent}%
+          </h3>
         )}
 
         {!loading &&
-          quiz.map((q, idx) => (
-            <div key={idx} style={{ marginBottom: 16 }}>
-              <b>{idx + 1}. {q.question}</b>
-              {q.options.map((opt, oi) => (
-                <div
-                  key={oi}
-                  onClick={() => handleSelect(idx, oi)}
-                  style={{
-                    padding: "8px 10px",
-                    border: "1px solid #ddd",
-                    borderRadius: 6,
-                    marginTop: 4,
-                    cursor: "pointer",
-                    background:
-                      submitted
-                        ? oi === q.correctIndex
-                          ? "#eaffea"
-                          : answers[idx] === oi
-                          ? "#ffecec"
-                          : "#fff"
-                        : answers[idx] === oi
-                        ? "#eef6ff"
-                        : "#fff",
-                  }}
-                >
-                  {opt}
-                </div>
-              ))}
+          quiz.map((item, idx) => (
+            <div key={idx} style={{ marginBottom: window.innerWidth < 768 ? 8 : 20 }}>
+              <b
+                style={{
+                  color: "#1b1b1b",
+                  fontSize: window.innerWidth < 768 ? 12 : 15,
+                  display: "block",
+                  marginBottom: 6,
+                }}
+              >
+                {idx + 1}. {item.q}
+              </b>
+
+              {item.options.map((opt, oi) => {
+                const chosen = answers[idx] === oi;
+                const isCorrect = item.correctIndex === oi;
+
+                return (
+                  <div
+                    key={oi}
+                    onClick={() => handleSelect(idx, oi)}
+                    style={{
+                      marginTop: 4,
+                      padding: window.innerWidth < 768 ? "6px 8px" : "10px 12px",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      border: "1px solid #ddd",
+                      background: chosen ? "#eef6ff" : "#fff",
+                      color: "#1b1b1b",
+                      fontWeight: 500,
+                      fontSize: window.innerWidth < 768 ? 12 : 14,
+                      ...(submitted &&
+                        (isCorrect
+                          ? { borderColor: "#2ecc71", background: "#eaffea" }
+                          : chosen
+                          ? { borderColor: "#e74c3c", background: "#ffe9e9" }
+                          : {})),
+                    }}
+                  >
+                    {opt}
+                  </div>
+                );
+              })}
             </div>
           ))}
 
-        {!submitted && !loading && (
-          <button onClick={handleSubmit}>Submit Quiz</button>
-        )}
-
-        {submitted && (
-          <>
-            <h3>Your Score: {percent}%</h3>
-            <button onClick={onClose}>Close</button>
-          </>
-        )}
+        {!submitted && !loading ? (
+          <button
+            onClick={handleSubmit}
+            style={{
+              padding: "10px 16px",
+              borderRadius: 10,
+              border: "none",
+              background: "linear-gradient(90deg,#FF9324,#FCD760)",
+              color: "#fff",
+              fontWeight: 700,
+              cursor: "pointer",
+              marginTop: 12,
+            }}
+          >
+            Submit Quiz
+          </button>
+        ) : !loading ? (
+          <button
+            onClick={onClose}
+            style={{
+              padding: "10px 16px",
+              marginTop: 12,
+              borderRadius: 10,
+              background: "linear-gradient(90deg,#FF9324,#FCD760)",
+              border: "none",
+              color: "#fff",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Close
+          </button>
+        ) : null}
       </div>
     </div>
   );
