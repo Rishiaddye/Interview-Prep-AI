@@ -12,7 +12,7 @@ const {
 } = require("../services/aiService");
 
 /* ===========================================================
-   1️⃣ Generate Interview Questions (JWT Protected)
+   1️⃣ Generate Interview Questions
    POST /api/ai/generate
 =========================================================== */
 router.post("/generate", authMiddleware, async (req, res) => {
@@ -26,15 +26,15 @@ router.post("/generate", authMiddleware, async (req, res) => {
       });
     }
 
-    const questionList = await generateInterview(
+    const questions = await generateInterview(
       role,
       experience,
-      topics || []
+      Array.isArray(topics) ? topics : []
     );
 
     res.json({
       ok: true,
-      questions: questionList.map((q) => ({
+      questions: questions.map((q) => ({
         q: q.q,
         a: q.a,
         followup: q.followup || "",
@@ -51,7 +51,7 @@ router.post("/generate", authMiddleware, async (req, res) => {
 });
 
 /* ===========================================================
-   2️⃣ Learn More (Long Explanation) — JWT Protected
+   2️⃣ Learn More (Long Explanation)
    POST /api/ai/learn-more
 =========================================================== */
 router.post("/learn-more", authMiddleware, async (req, res) => {
@@ -69,7 +69,7 @@ router.post("/learn-more", authMiddleware, async (req, res) => {
 
     res.json({
       ok: true,
-      explanation, // 👈 frontend expects this
+      explanation,
     });
   } catch (err) {
     console.error("AI /learn-more ERROR:", err);
@@ -81,7 +81,7 @@ router.post("/learn-more", authMiddleware, async (req, res) => {
 });
 
 /* ===========================================================
-   3️⃣ Generate MCQs (Test Yourself) — JWT Protected
+   3️⃣ Generate MCQs (Test Yourself)
    POST /api/ai/mcqs
 =========================================================== */
 router.post("/mcqs", authMiddleware, async (req, res) => {
@@ -95,11 +95,15 @@ router.post("/mcqs", authMiddleware, async (req, res) => {
       });
     }
 
-    const mcqs = await generateMCQs(role, experience, topics || []);
+    const mcqs = await generateMCQs(
+      role,
+      experience,
+      Array.isArray(topics) ? topics : []
+    );
 
     res.json({
       ok: true,
-      mcqs, // 👈 MUST be array of 10 MCQs
+      mcqs, // ✅ must be array of 10 MCQs
     });
   } catch (err) {
     console.error("AI /mcqs ERROR:", err);
