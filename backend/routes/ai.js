@@ -32,7 +32,7 @@ router.post("/generate", authMiddleware, async (req, res) => {
       Array.isArray(topics) ? topics : []
     );
 
-    res.json({
+    return res.json({
       ok: true,
       questions: questions.map((q) => ({
         q: q.q,
@@ -67,7 +67,7 @@ router.post("/learn-more", authMiddleware, async (req, res) => {
 
     const explanation = await generateLearnMore(question);
 
-    res.json({
+    return res.json({
       ok: true,
       explanation,
     });
@@ -81,29 +81,26 @@ router.post("/learn-more", authMiddleware, async (req, res) => {
 });
 
 /* ===========================================================
-   3️⃣ Generate MCQs (Test Yourself)
+   3️⃣ Generate MCQs (Test Yourself) — ✅ FIXED
    POST /api/ai/mcqs
 =========================================================== */
 router.post("/mcqs", authMiddleware, async (req, res) => {
   try {
-    const { role, experience, topics } = req.body;
+    const { questions } = req.body;
 
-    if (!role || !experience) {
+    // ✅ MCQs MUST be generated from session Q&A
+    if (!Array.isArray(questions) || questions.length === 0) {
       return res.status(400).json({
         ok: false,
-        error: "Role and experience are required",
+        error: "Questions array is required to generate MCQs",
       });
     }
 
-    const mcqs = await generateMCQs(
-      role,
-      experience,
-      Array.isArray(topics) ? topics : []
-    );
+    const mcqs = await generateMCQs(questions);
 
-    res.json({
+    return res.json({
       ok: true,
-      mcqs, // ✅ must be array of 10 MCQs
+      mcqs, // ✅ EXACTLY 10 MCQs
     });
   } catch (err) {
     console.error("AI /mcqs ERROR:", err);
