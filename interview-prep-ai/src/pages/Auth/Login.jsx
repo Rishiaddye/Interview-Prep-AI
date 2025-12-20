@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../context/userContext.jsx";
 import Input from "../../components/inputs/input.jsx";
@@ -12,7 +12,7 @@ import {
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-// ✅ mobile detection (safe)
+// ✅ safe mobile detection
 const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
 const Login = ({ setCurrentPage }) => {
@@ -21,7 +21,9 @@ const Login = ({ setCurrentPage }) => {
   const [error, setError] = useState(null);
 
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [loginAnimating, setLoginAnimating] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  const redirectHandled = useRef(false);
 
   const { login } = useUser();
   const navigate = useNavigate();
@@ -31,13 +33,16 @@ const Login = ({ setCurrentPage }) => {
   // =========================
   useEffect(() => {
     const handleRedirect = async () => {
+      if (redirectHandled.current) return;
+
       try {
         const result = await getRedirectResult(auth);
         if (!result?.user) return;
 
+        redirectHandled.current = true;
         await sendGoogleUserToBackend(result.user);
       } catch (err) {
-        console.error("Redirect login error:", err);
+        console.error(err);
         setError("Google login failed. Try again.");
         setGoogleLoading(false);
       }
@@ -46,9 +51,6 @@ const Login = ({ setCurrentPage }) => {
     handleRedirect();
   }, []);
 
-  // =========================
-  // SEND GOOGLE USER TO BACKEND
-  // =========================
   const sendGoogleUserToBackend = async (user) => {
     const res = await fetch(`${API_URL}/auth/google-login`, {
       method: "POST",
@@ -61,13 +63,13 @@ const Login = ({ setCurrentPage }) => {
     });
 
     const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Google login failed");
+    if (!res.ok) throw new Error("Google login failed");
 
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
     login(data.user);
 
-    navigate("/dashboard");
+    navigate("/dashboard", { replace: true });
   };
 
   // =========================
@@ -82,7 +84,7 @@ const Login = ({ setCurrentPage }) => {
     }
 
     try {
-      setLoginAnimating(true);
+      setLoginLoading(true);
 
       const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
@@ -91,22 +93,21 @@ const Login = ({ setCurrentPage }) => {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Login failed");
+      if (!res.ok) throw new Error("Login failed");
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       login(data.user);
 
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     } catch (err) {
-      console.error("Login error:", err);
       setError(err.message || "Login failed");
-      setLoginAnimating(false);
+      setLoginLoading(false);
     }
   };
 
   // =========================
-  // GOOGLE LOGIN (DESKTOP + MOBILE)
+  // GOOGLE LOGIN
   // =========================
   const handleGoogleLogin = async () => {
     try {
@@ -120,8 +121,7 @@ const Login = ({ setCurrentPage }) => {
 
       const result = await signInWithPopup(auth, googleProvider);
       await sendGoogleUserToBackend(result.user);
-    } catch (err) {
-      console.error("Google login error:", err);
+    } catch {
       setError("Google login failed. Try again.");
       setGoogleLoading(false);
     }
@@ -154,7 +154,7 @@ const Login = ({ setCurrentPage }) => {
         {/* Close */}
         <button
           onClick={() => setCurrentPage(null)}
-          disabled={googleLoading || loginAnimating}
+          disabled={googleLoading || loginLoading}
           style={{
             position: "absolute",
             top: 14,
@@ -217,10 +217,10 @@ const Login = ({ setCurrentPage }) => {
             </div>
           )}
 
-          {/* LOGIN BUTTON */}
+          {/* LOGIN BUTTON WITH SPINNER */}
           <button
             type="submit"
-            disabled={loginAnimating}
+            disabled={loginLoading}
             style={{
               width: "100%",
               marginTop: 18,
@@ -230,17 +230,14 @@ const Login = ({ setCurrentPage }) => {
               background: "linear-gradient(180deg,#000,#1c1c1c)",
               color: "#fff",
               fontWeight: 700,
-              letterSpacing: 0.3,
-              cursor: loginAnimating ? "not-allowed" : "pointer",
+              cursor: loginLoading ? "not-allowed" : "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               gap: 10,
-              transform: loginAnimating ? "scale(0.97)" : "scale(1)",
-              transition: "transform 0.15s ease",
             }}
           >
-            {loginAnimating && (
+            {loginLoading && (
               <div
                 style={{
                   width: 16,
@@ -252,7 +249,7 @@ const Login = ({ setCurrentPage }) => {
                 }}
               />
             )}
-            {loginAnimating ? "Logging in…" : "LOGIN"}
+            {loginLoading ? "Logging in…" : "LOGIN"}
           </button>
         </form>
 
@@ -271,7 +268,7 @@ const Login = ({ setCurrentPage }) => {
           <div style={{ flex: 1, height: 1, background: "#ddd" }} />
         </div>
 
-        {/* GOOGLE BUTTON */}
+        {/* GOOGLE BUTTON WITH SPINNER */}
         <button
           onClick={handleGoogleLogin}
           disabled={googleLoading}
@@ -282,11 +279,11 @@ const Login = ({ setCurrentPage }) => {
             border: "1px solid #e0e0e0",
             background: "#fafafa",
             fontWeight: 600,
-            cursor: googleLoading ? "not-allowed" : "pointer",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             gap: 10,
+            cursor: googleLoading ? "not-allowed" : "pointer",
           }}
         >
           {googleLoading ? (
@@ -310,15 +307,16 @@ const Login = ({ setCurrentPage }) => {
           {googleLoading ? "Signing in…" : "Continue with Google"}
         </button>
 
+        {/* SIGN UP */}
         <p style={{ marginTop: 18, fontSize: 14, textAlign: "center" }}>
           Don’t have an account?{" "}
           <span
             style={{
-              textDecoration: "underline",
-              cursor: "pointer",
+              color: "#FF9324",
               fontWeight: 600,
+              cursor: "pointer",
             }}
-            onClick={() => !googleLoading && setCurrentPage("signup")}
+            onClick={() => setCurrentPage("signup")}
           >
             Sign Up
           </span>
