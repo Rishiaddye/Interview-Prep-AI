@@ -16,7 +16,7 @@ const App = () => {
   const navigate = useNavigate();
   const { login } = useUser();
 
-  // ✅ GOOGLE REDIRECT HANDLER (MOBILE FIX)
+  // ✅ HANDLE GOOGLE REDIRECT (MOBILE FIX)
   useEffect(() => {
     const handleGoogleRedirect = async () => {
       try {
@@ -52,10 +52,9 @@ const App = () => {
     handleGoogleRedirect();
   }, []);
 
-  // ✅ YOUR EXISTING FIRST-VISIT LOGIC (UNCHANGED)
+  // ✅ FIRST VISIT LOGIC (KEEP THIS)
   useEffect(() => {
     const visited = localStorage.getItem("visited");
-
     if (!visited) {
       localStorage.setItem("visited", "yes");
       navigate("/signup", { replace: true });
