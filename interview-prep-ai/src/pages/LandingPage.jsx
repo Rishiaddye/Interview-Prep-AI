@@ -38,6 +38,8 @@ const LandingPage = () => {
 
   const y = useTransform(scrollYProgress, [0, 1], [0, 60]);
 
+
+
   useEffect(() => {
     const html = document.documentElement;
     const revertDark = html.classList.contains("dark");
