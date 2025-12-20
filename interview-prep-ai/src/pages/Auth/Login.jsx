@@ -12,6 +12,7 @@ const Login = ({ setCurrentPage }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const { login } = useUser();
   const navigate = useNavigate();
@@ -22,8 +23,10 @@ const Login = ({ setCurrentPage }) => {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError(null);
+    setLoading(true);
 
     if (!email || !password) {
+      setLoading(false);
       return setError("All fields are required");
     }
 
@@ -45,14 +48,18 @@ const Login = ({ setCurrentPage }) => {
     } catch (err) {
       console.error("Login error:", err);
       setError(err.message || "Login failed");
+      setLoading(false);
     }
   };
 
   // =========================
-  // GOOGLE LOGIN
+  // GOOGLE LOGIN (IMAGE FIXED ✅)
   // =========================
   const handleGoogleLogin = async () => {
     try {
+      setError(null);
+      setLoading(true);
+
       const result = await signInWithPopup(auth, googleProvider);
 
       const res = await fetch(`${API_URL}/auth/google-login`, {
@@ -68,14 +75,19 @@ const Login = ({ setCurrentPage }) => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Google login failed");
 
+      // ✅ Store auth data
       localStorage.setItem("token", data.token);
-      login(data.user);
       localStorage.setItem("user", JSON.stringify(data.user));
+      login(data.user);
 
-      navigate("/dashboard");
+      // ✅ IMPORTANT FIX — wait for context to commit
+      requestAnimationFrame(() => {
+        navigate("/dashboard");
+      });
     } catch (err) {
       console.error("Google login error:", err);
       setError("Google login failed. Try again.");
+      setLoading(false);
     }
   };
 
@@ -103,9 +115,10 @@ const Login = ({ setCurrentPage }) => {
           boxShadow: "0 40px 80px rgba(0,0,0,0.35)",
         }}
       >
-        {/* ❌ CLOSE BUTTON (ADDED – SAME AS SIGNUP) */}
+        {/* Close */}
         <button
           onClick={() => setCurrentPage(null)}
+          disabled={loading}
           style={{
             position: "absolute",
             top: 14,
@@ -117,32 +130,17 @@ const Login = ({ setCurrentPage }) => {
             background: "#f2f2f2",
             cursor: "pointer",
             fontSize: 18,
-            lineHeight: "34px",
           }}
         >
           ✕
         </button>
 
-        <h2
-          style={{
-            fontSize: 24,
-            fontWeight: 700,
-            marginBottom: 6,
-            textAlign: "center",
-          }}
-        >
+        <h2 style={{ fontSize: 24, fontWeight: 700, textAlign: "center" }}>
           Welcome Back 👋
         </h2>
 
-        <p
-          style={{
-            textAlign: "center",
-            opacity: 0.65,
-            fontSize: 14,
-            marginBottom: 22,
-          }}
-        >
-          Please enter your details to continue
+        <p style={{ textAlign: "center", opacity: 0.65, fontSize: 14 }}>
+          {loading ? "Signing you in…" : "Please enter your details to continue"}
         </p>
 
         <form onSubmit={handleLogin}>
@@ -178,20 +176,22 @@ const Login = ({ setCurrentPage }) => {
 
           <button
             type="submit"
+            disabled={loading}
             style={{
               width: "100%",
               marginTop: 18,
               padding: "13px",
               borderRadius: 12,
               border: "none",
-              background: "linear-gradient(180deg,#000,#1c1c1c)",
+              background: loading
+                ? "#999"
+                : "linear-gradient(180deg,#000,#1c1c1c)",
               color: "#fff",
               fontWeight: 700,
-              letterSpacing: 0.3,
-              cursor: "pointer",
+              cursor: loading ? "not-allowed" : "pointer",
             }}
           >
-            LOGIN
+            {loading ? "PLEASE WAIT…" : "LOGIN"}
           </button>
         </form>
 
@@ -210,38 +210,32 @@ const Login = ({ setCurrentPage }) => {
           <div style={{ flex: 1, height: 1, background: "#ddd" }} />
         </div>
 
-     <button
-  onClick={handleGoogleLogin}
-  style={{
-    width: "100%",
-    padding: "12px",
-    borderRadius: 12,
-    border: "1px solid #e0e0e0",
-    background: "#fafafa",
-    fontWeight: 600,
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-  }}
->
-  <img
-    src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-    alt="Google"
-    style={{ width: 20, height: 20 }}
-  />
-  Continue with Google
-</button>
-
-
-        <p
+        <button
+          onClick={handleGoogleLogin}
+          disabled={loading}
           style={{
-            marginTop: 18,
-            fontSize: 14,
-            textAlign: "center",
+            width: "100%",
+            padding: "12px",
+            borderRadius: 12,
+            border: "1px solid #e0e0e0",
+            background: "#fafafa",
+            fontWeight: 600,
+            cursor: loading ? "not-allowed" : "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 10,
           }}
         >
+          <img
+            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+            alt="Google"
+            style={{ width: 20, height: 20 }}
+          />
+          {loading ? "Signing in…" : "Continue with Google"}
+        </button>
+
+        <p style={{ marginTop: 18, fontSize: 14, textAlign: "center" }}>
           Don’t have an account?{" "}
           <span
             style={{
@@ -249,7 +243,7 @@ const Login = ({ setCurrentPage }) => {
               cursor: "pointer",
               fontWeight: 600,
             }}
-            onClick={() => setCurrentPage("signup")}
+            onClick={() => !loading && setCurrentPage("signup")}
           >
             Sign Up
           </span>
