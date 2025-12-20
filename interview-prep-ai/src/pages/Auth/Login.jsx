@@ -12,7 +12,10 @@ const Login = ({ setCurrentPage }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
+
+  // ✅ STATES
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [loginAnimating, setLoginAnimating] = useState(false);
 
   const { login } = useUser();
   const navigate = useNavigate();
@@ -23,14 +26,14 @@ const Login = ({ setCurrentPage }) => {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
 
     if (!email || !password) {
-      setLoading(false);
       return setError("All fields are required");
     }
 
     try {
+      setLoginAnimating(true); // ✅ spinner + animation ON
+
       const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -48,17 +51,17 @@ const Login = ({ setCurrentPage }) => {
     } catch (err) {
       console.error("Login error:", err);
       setError(err.message || "Login failed");
-      setLoading(false);
+      setLoginAnimating(false); // ❌ stop spinner on error
     }
   };
 
   // =========================
-  // GOOGLE LOGIN (IMAGE FIXED ✅)
+  // GOOGLE LOGIN
   // =========================
   const handleGoogleLogin = async () => {
     try {
       setError(null);
-      setLoading(true);
+      setGoogleLoading(true);
 
       const result = await signInWithPopup(auth, googleProvider);
 
@@ -75,19 +78,15 @@ const Login = ({ setCurrentPage }) => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Google login failed");
 
-      // ✅ Store auth data
       localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
       login(data.user);
+      localStorage.setItem("user", JSON.stringify(data.user));
 
-      // ✅ IMPORTANT FIX — wait for context to commit
-      requestAnimationFrame(() => {
-        navigate("/dashboard");
-      });
+      navigate("/dashboard");
     } catch (err) {
       console.error("Google login error:", err);
       setError("Google login failed. Try again.");
-      setLoading(false);
+      setGoogleLoading(false);
     }
   };
 
@@ -118,7 +117,7 @@ const Login = ({ setCurrentPage }) => {
         {/* Close */}
         <button
           onClick={() => setCurrentPage(null)}
-          disabled={loading}
+          disabled={googleLoading || loginAnimating}
           style={{
             position: "absolute",
             top: 14,
@@ -139,8 +138,15 @@ const Login = ({ setCurrentPage }) => {
           Welcome Back 👋
         </h2>
 
-        <p style={{ textAlign: "center", opacity: 0.65, fontSize: 14 }}>
-          {loading ? "Signing you in…" : "Please enter your details to continue"}
+        <p
+          style={{
+            textAlign: "center",
+            opacity: 0.65,
+            fontSize: 14,
+            marginBottom: 22,
+          }}
+        >
+          Please enter your details to continue
         </p>
 
         <form onSubmit={handleLogin}>
@@ -174,24 +180,42 @@ const Login = ({ setCurrentPage }) => {
             </div>
           )}
 
+          {/* LOGIN BUTTON WITH SPINNER */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loginAnimating}
             style={{
               width: "100%",
               marginTop: 18,
               padding: "13px",
               borderRadius: 12,
               border: "none",
-              background: loading
-                ? "#999"
-                : "linear-gradient(180deg,#000,#1c1c1c)",
+              background: "linear-gradient(180deg,#000,#1c1c1c)",
               color: "#fff",
               fontWeight: 700,
-              cursor: loading ? "not-allowed" : "pointer",
+              letterSpacing: 0.3,
+              cursor: loginAnimating ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+              transform: loginAnimating ? "scale(0.97)" : "scale(1)",
+              transition: "transform 0.15s ease",
             }}
           >
-            {loading ? "PLEASE WAIT…" : "LOGIN"}
+            {loginAnimating && (
+              <div
+                style={{
+                  width: 16,
+                  height: 16,
+                  border: "2px solid #bbb",
+                  borderTop: "2px solid #fff",
+                  borderRadius: "50%",
+                  animation: "spin 0.8s linear infinite",
+                }}
+              />
+            )}
+            {loginAnimating ? "Logging in…" : "LOGIN"}
           </button>
         </form>
 
@@ -210,9 +234,10 @@ const Login = ({ setCurrentPage }) => {
           <div style={{ flex: 1, height: 1, background: "#ddd" }} />
         </div>
 
+        {/* GOOGLE BUTTON (UNCHANGED) */}
         <button
           onClick={handleGoogleLogin}
-          disabled={loading}
+          disabled={googleLoading}
           style={{
             width: "100%",
             padding: "12px",
@@ -220,19 +245,32 @@ const Login = ({ setCurrentPage }) => {
             border: "1px solid #e0e0e0",
             background: "#fafafa",
             fontWeight: 600,
-            cursor: loading ? "not-allowed" : "pointer",
+            cursor: googleLoading ? "not-allowed" : "pointer",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             gap: 10,
           }}
         >
-          <img
-            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-            alt="Google"
-            style={{ width: 20, height: 20 }}
-          />
-          {loading ? "Signing in…" : "Continue with Google"}
+          {googleLoading ? (
+            <div
+              style={{
+                width: 18,
+                height: 18,
+                border: "2px solid #ccc",
+                borderTop: "2px solid #333",
+                borderRadius: "50%",
+                animation: "spin 0.8s linear infinite",
+              }}
+            />
+          ) : (
+            <img
+              src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+              alt="Google"
+              style={{ width: 20, height: 20 }}
+            />
+          )}
+          {googleLoading ? "Signing in…" : "Continue with Google"}
         </button>
 
         <p style={{ marginTop: 18, fontSize: 14, textAlign: "center" }}>
@@ -243,12 +281,22 @@ const Login = ({ setCurrentPage }) => {
               cursor: "pointer",
               fontWeight: 600,
             }}
-            onClick={() => !loading && setCurrentPage("signup")}
+            onClick={() => !googleLoading && setCurrentPage("signup")}
           >
             Sign Up
           </span>
         </p>
       </div>
+
+      {/* SPINNER KEYFRAME */}
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
     </div>
   );
 };
