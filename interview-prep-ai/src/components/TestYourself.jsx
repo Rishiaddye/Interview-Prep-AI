@@ -10,6 +10,18 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
   const [score, setScore] = useState(0);
   const [loading, setLoading] = useState(false);
 
+  // ✅ ADDED: screen size state (NO logic changed)
+  const [screenWidth, setScreenWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => setScreenWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const isMobile = screenWidth <= 480;
+  const isTablet = screenWidth > 480 && screenWidth <= 768;
+
   // ----------------------------------------
   // LOAD MCQs WHEN MODAL OPENS
   // ----------------------------------------
@@ -27,15 +39,14 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
           return;
         }
 
-        // ✅ Send session Q&A to backend
         const formattedQuestions = session.questions.map((q) => ({
           q: q.q,
           a: q.a,
         }));
 
         const res = await axios.post(
-          `${API_URL}/ai/mcqs`, // ✅ FIXED ENDPOINT
-          { questions: formattedQuestions }, // ✅ FIXED PAYLOAD
+          `${API_URL}/ai/mcqs`,
+          { questions: formattedQuestions },
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -92,7 +103,6 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
     return Math.round((score / quiz.length) * 100);
   }, [score, quiz]);
 
-  // SEND SCORE TO PARENT
   useEffect(() => {
     if (submitted) onSubmitScore(percent);
   }, [submitted, percent, onSubmitScore]);
@@ -109,6 +119,7 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
         justifyContent: "center",
         alignItems: "center",
         zIndex: 2400,
+        padding: isMobile ? 8 : 0, // ✅ added
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -118,20 +129,20 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
         onClick={(e) => e.stopPropagation()}
         style={{
           width: "100%",
-          maxWidth: window.innerWidth < 768 ? "92%" : 800,
-          maxHeight: window.innerWidth < 768 ? "70vh" : "90vh",
+          maxWidth: isMobile ? "100%" : isTablet ? "92%" : 800, // ✅ added
+          maxHeight: isMobile ? "92vh" : isTablet ? "80vh" : "90vh", // ✅ added
           overflowY: "auto",
           background: "white",
           borderRadius: 12,
-          padding: window.innerWidth < 768 ? 10 : 20,
+          padding: isMobile ? 12 : isTablet ? 16 : 20, // ✅ added
         }}
       >
         <h2
           style={{
             marginTop: 0,
-            marginBottom: window.innerWidth < 768 ? 8 : 12,
+            marginBottom: isMobile ? 6 : 12,
             color: "#1b1b1b",
-            fontSize: window.innerWidth < 768 ? 14 : 22,
+            fontSize: isMobile ? 14 : isTablet ? 18 : 22, // ✅ added
             fontWeight: 700,
           }}
         >
@@ -148,7 +159,7 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
           <h3
             style={{
               color: "#1b1b1b",
-              fontSize: window.innerWidth < 768 ? 14 : 18,
+              fontSize: isMobile ? 14 : 18,
               fontWeight: 700,
             }}
           >
@@ -160,12 +171,12 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
           quiz.map((item, idx) => (
             <div
               key={idx}
-              style={{ marginBottom: window.innerWidth < 768 ? 8 : 20 }}
+              style={{ marginBottom: isMobile ? 10 : 20 }}
             >
               <b
                 style={{
                   color: "#1b1b1b",
-                  fontSize: window.innerWidth < 768 ? 12 : 15,
+                  fontSize: isMobile ? 12 : 15,
                   display: "block",
                   marginBottom: 6,
                 }}
@@ -182,18 +193,15 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
                     key={oi}
                     onClick={() => handleSelect(idx, oi)}
                     style={{
-                      marginTop: 4,
-                      padding:
-                        window.innerWidth < 768
-                          ? "6px 8px"
-                          : "10px 12px",
+                      marginTop: 6,
+                      padding: isMobile ? "10px 12px" : "10px 12px", // ✅ touch friendly
                       borderRadius: 6,
                       cursor: "pointer",
                       border: "1px solid #ddd",
                       background: chosen ? "#eef6ff" : "#fff",
                       color: "#1b1b1b",
                       fontWeight: 500,
-                      fontSize: window.innerWidth < 768 ? 12 : 14,
+                      fontSize: isMobile ? 13 : 14,
                       ...(submitted &&
                         (isCorrect
                           ? {
@@ -219,7 +227,8 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
           <button
             onClick={handleSubmit}
             style={{
-              padding: "10px 16px",
+              width: "100%", // ✅ added (mobile friendly)
+              padding: "12px 16px",
               borderRadius: 10,
               border: "none",
               background: "linear-gradient(90deg,#FF9324,#FCD760)",
@@ -235,7 +244,8 @@ const TestYourself = ({ session, onClose, open, onSubmitScore }) => {
           <button
             onClick={onClose}
             style={{
-              padding: "10px 16px",
+              width: "100%", // ✅ added
+              padding: "12px 16px",
               marginTop: 12,
               borderRadius: 10,
               background: "linear-gradient(90deg,#FF9324,#FCD760)",
