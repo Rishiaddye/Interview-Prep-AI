@@ -1,24 +1,74 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../context/userContext.jsx";
 import Input from "../../components/inputs/input.jsx";
 
 import { auth, googleProvider } from "../../firebase";
-import { signInWithPopup } from "firebase/auth";
+import {
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+} from "firebase/auth";
 
 const API_URL = import.meta.env.VITE_API_URL;
+
+// ✅ mobile detection (safe)
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
 const Login = ({ setCurrentPage }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
 
-  // ✅ STATES
   const [googleLoading, setGoogleLoading] = useState(false);
   const [loginAnimating, setLoginAnimating] = useState(false);
 
   const { login } = useUser();
   const navigate = useNavigate();
+
+  // =========================
+  // HANDLE GOOGLE REDIRECT (MOBILE)
+  // =========================
+  useEffect(() => {
+    const handleRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (!result?.user) return;
+
+        await sendGoogleUserToBackend(result.user);
+      } catch (err) {
+        console.error("Redirect login error:", err);
+        setError("Google login failed. Try again.");
+        setGoogleLoading(false);
+      }
+    };
+
+    handleRedirect();
+  }, []);
+
+  // =========================
+  // SEND GOOGLE USER TO BACKEND
+  // =========================
+  const sendGoogleUserToBackend = async (user) => {
+    const res = await fetch(`${API_URL}/auth/google-login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fullName: user.displayName,
+        email: user.email,
+        profilePic: user.photoURL,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Google login failed");
+
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(data.user));
+    login(data.user);
+
+    navigate("/dashboard");
+  };
 
   // =========================
   // EMAIL / PASSWORD LOGIN
@@ -32,7 +82,7 @@ const Login = ({ setCurrentPage }) => {
     }
 
     try {
-      setLoginAnimating(true); // ✅ spinner + animation ON
+      setLoginAnimating(true);
 
       const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
@@ -44,45 +94,32 @@ const Login = ({ setCurrentPage }) => {
       if (!res.ok) throw new Error(data.message || "Login failed");
 
       localStorage.setItem("token", data.token);
-      login(data.user);
       localStorage.setItem("user", JSON.stringify(data.user));
+      login(data.user);
 
       navigate("/dashboard");
     } catch (err) {
       console.error("Login error:", err);
       setError(err.message || "Login failed");
-      setLoginAnimating(false); // ❌ stop spinner on error
+      setLoginAnimating(false);
     }
   };
 
   // =========================
-  // GOOGLE LOGIN
+  // GOOGLE LOGIN (DESKTOP + MOBILE)
   // =========================
   const handleGoogleLogin = async () => {
     try {
       setError(null);
       setGoogleLoading(true);
 
+      if (isMobile) {
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
+
       const result = await signInWithPopup(auth, googleProvider);
-
-      const res = await fetch(`${API_URL}/auth/google-login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName: result.user.displayName,
-          email: result.user.email,
-          profilePic: result.user.photoURL,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Google login failed");
-
-      localStorage.setItem("token", data.token);
-      login(data.user);
-      localStorage.setItem("user", JSON.stringify(data.user));
-
-      navigate("/dashboard");
+      await sendGoogleUserToBackend(result.user);
     } catch (err) {
       console.error("Google login error:", err);
       setError("Google login failed. Try again.");
@@ -180,7 +217,7 @@ const Login = ({ setCurrentPage }) => {
             </div>
           )}
 
-          {/* LOGIN BUTTON WITH SPINNER */}
+          {/* LOGIN BUTTON */}
           <button
             type="submit"
             disabled={loginAnimating}
@@ -234,7 +271,7 @@ const Login = ({ setCurrentPage }) => {
           <div style={{ flex: 1, height: 1, background: "#ddd" }} />
         </div>
 
-        {/* GOOGLE BUTTON (UNCHANGED) */}
+        {/* GOOGLE BUTTON */}
         <button
           onClick={handleGoogleLogin}
           disabled={googleLoading}
@@ -288,7 +325,6 @@ const Login = ({ setCurrentPage }) => {
         </p>
       </div>
 
-      {/* SPINNER KEYFRAME */}
       <style>
         {`
           @keyframes spin {
