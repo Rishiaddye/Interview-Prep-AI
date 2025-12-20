@@ -1,79 +1,24 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../context/userContext.jsx";
 import Input from "../../components/inputs/input.jsx";
 
 import { auth, googleProvider } from "../../firebase";
-import {
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
-} from "firebase/auth";
+import { signInWithPopup } from "firebase/auth";
 
 const API_URL = import.meta.env.VITE_API_URL;
-
-// ✅ reliable mobile detection
-const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 const Login = ({ setCurrentPage }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
 
+  // ✅ ONLY ADDED
   const [loginLoading, setLoginLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const redirectHandled = useRef(false);
-
   const { login } = useUser();
   const navigate = useNavigate();
-
-  // =========================
-  // HANDLE GOOGLE REDIRECT (MOBILE)
-  // =========================
-  useEffect(() => {
-    const handleRedirectResult = async () => {
-      if (redirectHandled.current) return;
-
-      try {
-        const result = await getRedirectResult(auth);
-        if (!result?.user) return;
-
-        redirectHandled.current = true;
-        await sendGoogleUserToBackend(result.user);
-      } catch (err) {
-        console.error("Google redirect error:", err);
-        setError("Google login failed. Try again.");
-        setGoogleLoading(false);
-      }
-    };
-
-    handleRedirectResult();
-  }, []);
-
-  // =========================
-  // SEND GOOGLE USER TO BACKEND
-  // =========================
-  const sendGoogleUserToBackend = async (user) => {
-    const res = await fetch(`${API_URL}/auth/google-login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fullName: user.displayName,
-        email: user.email,
-        profilePic: user.photoURL,
-      }),
-    });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Google login failed");
-
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("user", JSON.stringify(data.user));
-    login(data.user);
-
-    navigate("/dashboard", { replace: true });
-  };
 
   // =========================
   // EMAIL / PASSWORD LOGIN
@@ -87,7 +32,7 @@ const Login = ({ setCurrentPage }) => {
     }
 
     try {
-      setLoginLoading(true);
+      setLoginLoading(true); // ✅ spinner ON
 
       const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
@@ -99,36 +44,49 @@ const Login = ({ setCurrentPage }) => {
       if (!res.ok) throw new Error(data.message || "Login failed");
 
       localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
       login(data.user);
+      localStorage.setItem("user", JSON.stringify(data.user));
 
-      navigate("/dashboard", { replace: true });
+      navigate("/dashboard");
     } catch (err) {
       console.error("Login error:", err);
       setError(err.message || "Login failed");
-      setLoginLoading(false);
+      setLoginLoading(false); // ❌ stop spinner on error
     }
   };
 
   // =========================
-  // GOOGLE LOGIN (PC + MOBILE SAFE)
+  // GOOGLE LOGIN
   // =========================
   const handleGoogleLogin = async () => {
     try {
       setError(null);
-      setGoogleLoading(true);
-
-      if (isMobile) {
-        await signInWithRedirect(auth, googleProvider);
-        return;
-      }
+      setGoogleLoading(true); // ✅ spinner ON
 
       const result = await signInWithPopup(auth, googleProvider);
-      await sendGoogleUserToBackend(result.user);
+
+      const res = await fetch(`${API_URL}/auth/google-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: result.user.displayName,
+          email: result.user.email,
+          profilePic: result.user.photoURL,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Google login failed");
+
+      localStorage.setItem("token", data.token);
+      login(data.user);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      navigate("/dashboard");
     } catch (err) {
       console.error("Google login error:", err);
       setError("Google login failed. Try again.");
-      setGoogleLoading(false);
+      setGoogleLoading(false); // ❌ stop spinner on error
     }
   };
 
@@ -156,6 +114,7 @@ const Login = ({ setCurrentPage }) => {
           boxShadow: "0 40px 80px rgba(0,0,0,0.35)",
         }}
       >
+        {/* CLOSE BUTTON */}
         <button
           onClick={() => setCurrentPage(null)}
           disabled={loginLoading || googleLoading}
@@ -170,12 +129,20 @@ const Login = ({ setCurrentPage }) => {
             background: "#f2f2f2",
             cursor: "pointer",
             fontSize: 18,
+            lineHeight: "34px",
           }}
         >
           ✕
         </button>
 
-        <h2 style={{ fontSize: 24, fontWeight: 700, textAlign: "center" }}>
+        <h2
+          style={{
+            fontSize: 24,
+            fontWeight: 700,
+            marginBottom: 6,
+            textAlign: "center",
+          }}
+        >
           Welcome Back 👋
         </h2>
 
@@ -221,6 +188,7 @@ const Login = ({ setCurrentPage }) => {
             </div>
           )}
 
+          {/* LOGIN BUTTON WITH SPINNER */}
           <button
             type="submit"
             disabled={loginLoading}
@@ -233,13 +201,31 @@ const Login = ({ setCurrentPage }) => {
               background: "linear-gradient(180deg,#000,#1c1c1c)",
               color: "#fff",
               fontWeight: 700,
+              letterSpacing: 0.3,
               cursor: loginLoading ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
             }}
           >
+            {loginLoading && (
+              <span
+                style={{
+                  width: 16,
+                  height: 16,
+                  border: "2px solid #bbb",
+                  borderTop: "2px solid #fff",
+                  borderRadius: "50%",
+                  animation: "spin 0.8s linear infinite",
+                }}
+              />
+            )}
             {loginLoading ? "Logging in…" : "LOGIN"}
           </button>
         </form>
 
+        {/* Divider */}
         <div
           style={{
             display: "flex",
@@ -254,6 +240,7 @@ const Login = ({ setCurrentPage }) => {
           <div style={{ flex: 1, height: 1, background: "#ddd" }} />
         </div>
 
+        {/* GOOGLE BUTTON WITH SPINNER */}
         <button
           onClick={handleGoogleLogin}
           disabled={googleLoading}
@@ -271,23 +258,38 @@ const Login = ({ setCurrentPage }) => {
             gap: 10,
           }}
         >
-          {googleLoading ? "Signing in…" : (
-            <>
-              <img
-                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                alt="Google"
-                style={{ width: 20, height: 20 }}
-              />
-              Continue with Google
-            </>
+          {googleLoading ? (
+            <span
+              style={{
+                width: 18,
+                height: 18,
+                border: "2px solid #ccc",
+                borderTop: "2px solid #333",
+                borderRadius: "50%",
+                animation: "spin 0.8s linear infinite",
+              }}
+            />
+          ) : (
+            <img
+              src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+              alt="Google"
+              style={{ width: 20, height: 20 }}
+            />
           )}
+          {googleLoading ? "Signing in…" : "Continue with Google"}
         </button>
 
-        <p style={{ marginTop: 18, fontSize: 14, textAlign: "center" }}>
+        <p
+          style={{
+            marginTop: 18,
+            fontSize: 14,
+            textAlign: "center",
+          }}
+        >
           Don’t have an account?{" "}
           <span
             style={{
-              color: "#FF9324",
+              textDecoration: "underline",
               cursor: "pointer",
               fontWeight: 600,
             }}
@@ -297,6 +299,16 @@ const Login = ({ setCurrentPage }) => {
           </span>
         </p>
       </div>
+
+      {/* SPINNER ANIMATION */}
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
     </div>
   );
 };
